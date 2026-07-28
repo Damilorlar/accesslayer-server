@@ -1,8 +1,11 @@
+import { createHash } from 'crypto';
 import { prisma } from '../../utils/prisma.utils';
 import { updateOwnership } from '../ownership/ownership.service';
 import { upsertPriceSnapshot } from './price-snapshot.service';
+import { updateIndexedLedger } from './ledger-gap-detection.service';
 import { logger } from '../../utils/logger.utils';
 import { processIndexerChainEvents, IndexerChainEvent } from '../../utils/indexer-event-processor.utils';
+import { dedupeChainEvents } from '../../utils/indexer-dedupe.utils';
 
 /**
  * Processes a batch of on-chain trade events (KEY_BOUGHT or KEY_SOLD).
@@ -12,6 +15,7 @@ import { processIndexerChainEvents, IndexerChainEvent } from '../../utils/indexe
  * - Creates an Activity record (representing the trade).
  * - Updates the KeyOwnership read model.
  * - Upserts the CreatorPriceSnapshot read model.
+ * - Writes a checkpoint record of the highest ledger processed.
  */
 export async function processTradeEvents(events: IndexerChainEvent[]): Promise<void> {
    await processIndexerChainEvents(events, async (event) => {
@@ -62,6 +66,28 @@ export async function processTradeEvents(events: IndexerChainEvent[]): Promise<v
          creatorId,
          price: BigInt(price),
          tradeAt: new Date(tradeAt),
+         ledger: Number(ledger),
       });
    });
+
+   const uniqueEvents = dedupeChainEvents(events);
+
+   const processedLedgers = uniqueEvents
+      .map(e => e.ledger)
+      .filter((l): l is number => typeof l === 'number');
+
+   if (processedLedgers.length > 0) {
+      const maxLedger = Math.max(...processedLedgers);
+      const batchHash = computeBatchHash(uniqueEvents);
+      const cursor = `${maxLedger}-000`;
+      await updateIndexedLedger(maxLedger, cursor, batchHash);
+   }
+}
+
+function computeBatchHash(events: Array<{ txHash: string; eventIndex: number }>): string {
+   const identifiers = events
+      .map(e => `${e.txHash}:${e.eventIndex}`)
+      .sort()
+      .join('|');
+   return createHash('sha256').update(identifiers, 'utf8').digest('hex').slice(0, 16);
 }

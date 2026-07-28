@@ -74,9 +74,11 @@ export async function fetchWalletHoldings(
          const rawPrice = priceMap.get(row.creatorId) ?? null;
          const currentPrice = rawPrice !== null ? rawPrice.toString() : null;
          const totalValue =
-            rawPrice !== null && row.balance !== null
-               ? (Number(row.balance) * Number(rawPrice)).toString()
-               : null;
+            rawPrice === null
+               ? '0'
+               : row.balance !== null
+                 ? (Number(row.balance) * Number(rawPrice)).toString()
+                 : null;
          return {
             creator_id: row.creatorId,
             creator_handle: handleMap.get(row.creatorId) ?? null,

@@ -3,7 +3,7 @@ import app from '../../../app';
 import { prisma } from '../../../utils/prisma.utils';
 
 describe('GET /api/v1/wallets/:address/holdings - multiple price snapshot updates', () => {
-  const WALLET_ADDRESS = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+  const WALLET_ADDRESS = 'GCZURJAWEEAYDCIIUFMCGVDIKBASNKQQ7ZCX33BP2DZHFF52SG6BLW6J';
   const USER_ID = 'wallet-multi-snap-user';
   const CREATOR_ID = 'wallet-multi-snap-creator';
   const HOLDING_BALANCE = 5.0; // 5 keys held

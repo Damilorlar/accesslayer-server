@@ -4,11 +4,12 @@ import { envConfig } from '../../config';
 import { maskWebhookUrl } from '../../utils/webhook-mask.utils';
 import { buildWebhookPayload } from './webhook-payload.utils';
 import type {
-   CreateWebhookInput,
-   TradeEvent,
-   WebhookEventPayload,
-   WebhookEventName,
-   WebhookResponse,
+    CreateWebhookInput,
+    UpdateWebhookInput,
+    TradeEvent,
+    WebhookEventPayload,
+    WebhookEventName,
+    WebhookResponse,
 } from './webhook.types';
 
 function normalizeEvents(events: string[]): ('BUY' | 'SELL')[] {
@@ -75,26 +76,79 @@ export async function listWebhooks(creatorId: string): Promise<WebhookResponse[]
 }
 
 export async function deleteWebhook(webhookId: string, creatorId: string) {
-   const webhook = await prisma.webhook.findFirst({
-      where: { id: webhookId, creatorId },
-   });
+    const webhook = await prisma.webhook.findFirst({
+       where: { id: webhookId, creatorId },
+    });
 
-   if (!webhook) {
-      return null;
-   }
+    if (!webhook) {
+       return null;
+    }
 
-   await prisma.webhook.delete({ where: { id: webhookId } });
+    await prisma.webhook.delete({ where: { id: webhookId } });
 
-   logger.info(
-      {
-         creator_id: creatorId,
-         webhook_id: webhookId,
-         deleted_at: new Date().toISOString(),
-      },
-      'Webhook deleted'
-   );
+    logger.info(
+       {
+          creator_id: creatorId,
+          webhook_id: webhookId,
+          deleted_at: new Date().toISOString(),
+       },
+       'Webhook deleted'
+    );
 
-   return { id: webhookId };
+    return { id: webhookId };
+}
+
+export async function getWebhook(webhookId: string, creatorId: string) {
+    const webhook = await prisma.webhook.findFirst({
+       where: { id: webhookId, creatorId },
+    });
+
+    if (!webhook) {
+       return null;
+    }
+
+    return {
+       ...webhook,
+       events: denormalizeEvents(webhook.events as ('BUY' | 'SELL')[]),
+    };
+}
+
+export async function updateWebhook(
+    webhookId: string,
+    creatorId: string,
+    input: UpdateWebhookInput
+) {
+    const webhook = await prisma.webhook.findFirst({
+       where: { id: webhookId, creatorId },
+    });
+
+    if (!webhook) {
+       return null;
+    }
+
+    const updated = await prisma.webhook.update({
+       where: { id: webhookId },
+       data: {
+          callbackUrl: input.callbackUrl ?? webhook.callbackUrl,
+          events: input.events
+             ? { set: normalizeEvents(input.events) }
+             : undefined,
+       },
+    });
+
+    logger.info(
+       {
+          creator_id: creatorId,
+          webhook_id: webhookId,
+          updated_at: new Date().toISOString(),
+       },
+       'Webhook updated'
+    );
+
+    return {
+       ...updated,
+       events: denormalizeEvents(updated.events as ('BUY' | 'SELL')[]),
+    };
 }
 
 export async function dispatchWebhookEvent(tradeEvent: TradeEvent) {

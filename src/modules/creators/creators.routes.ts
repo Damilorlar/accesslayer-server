@@ -4,6 +4,7 @@ import {
    httpGetCreator,
    httpGetCreatorStats,
    httpGetTrendingCreators,
+   httpGetCreatorLeaderboard,
 } from './creators.controllers';
 import { httpGetCreatorHolders } from './creator-holders.controller';
 import { cacheControl } from '../../middlewares/cache-control.middleware';
@@ -89,6 +90,18 @@ creatorsRouter.get(
    '/trending',
    createCreatorReadMetricsMiddleware('list'),
    httpGetTrendingCreators
+);
+
+/**
+ * GET /api/v1/creators/leaderboard
+ *
+ * List creators ranked by holder count descending, tie-broken
+ * alphabetically by creator address.
+ */
+creatorsRouter.get(
+   '/leaderboard',
+   createCreatorReadMetricsMiddleware('list'),
+   httpGetCreatorLeaderboard
 );
 
 /**

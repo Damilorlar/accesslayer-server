@@ -56,6 +56,24 @@ The log includes:
 
 Use `processIndexerChainEvents` to dedupe a batch and log once per unique event.
 
+## 5. Structured batch logging
+
+In addition to the per-event log above, `processIndexerChainEvents` emits
+exactly two logs per batch — never per individual ledger:
+
+| Log                       | Level | Fields                                                                              |
+| :------------------------ | :---- | :---------------------------------------------------------------------------------- |
+| `indexer_batch_started`   | info  | `from_ledger`, `to_ledger`, `batch_size` (raw batch size, before dedup)             |
+| `indexer_batch_completed` | debug | `from_ledger`, `to_ledger`, `events_processed` (unique, after dedup), `duration_ms` |
+
+`from_ledger`/`to_ledger` are the min/max `ledger` values across the events
+in the batch (`undefined` if no event in the batch carries a `ledger`).
+`duration_ms` is measured with the same monotonic clock used for per-event
+timing, from the start of the batch to the completion of the last event.
+
+These logs give operators batch throughput and size at a glance without
+requiring per-ledger database queries.
+
 ## 3. Error Handling
 
 If an event fails to process after multiple retries, it is moved to the [Dead-Letter Queue (DLQ)](./DLQ_WORKFLOW.md) for manual investigation.

@@ -34,8 +34,12 @@ app.use(requestCompletionLoggerMiddleware);
 app.use(corsMiddleware());
 app.use(helmet());
 
-app.use(express.json({ limit: '10mb' }));
-app.use(bodyParseErrorMiddleware);
+// Request body parsing is applied per route group (see modules/index.ts)
+// via routeBodySizeLimit, so each group can have its own configured size
+// limit instead of one global express.json() call. bodyParseErrorMiddleware
+// is mounted after the router (below) since that's where those parsers
+// actually live now — Express only walks forward to later error handlers,
+// so it has to come after the point where the parse error can occur.
 
 if (!envConfig.ENABLE_REQUEST_LOGGING) {
    app.use(morgan('combined'));
@@ -86,6 +90,11 @@ app.get('/', (_, res: Response) => {
 
 // Routes
 app.use('/api/v1', router);
+
+// Catches body-parse errors (including entity.too.large from the per-group
+// JSON parsers mounted inside router) — must come after the router since
+// that's where those parsers run.
+app.use(bodyParseErrorMiddleware);
 
 // 404 handler - MUST come after all routes
 app.use(notFoundHandler);

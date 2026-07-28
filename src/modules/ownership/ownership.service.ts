@@ -6,11 +6,7 @@ type KeyOwnership = NonNullable<
    Awaited<ReturnType<typeof prisma.keyOwnership.findFirst>>
 >;
 
-function maskAddress(address: string): string {
-   if (address.length <= 8) return address;
-   return `${address.slice(0, 4)}…${address.slice(-4)}`;
-}
-
+import { truncateWallet } from '../../utils/wallet-display.utils';
 export async function fetchOwnership(
    query: OwnershipQueryType
 ): Promise<KeyOwnership[]> {
@@ -63,7 +59,7 @@ export async function updateOwnership(
    logger.debug(
       {
          creator_id: creatorId,
-         wallet_address: maskAddress(ownerAddress),
+         wallet_address: truncateWallet(ownerAddress),
          previous_balance: previousBalance,
          new_balance: Number(result.balance),
          event_type: ctx.event_type,

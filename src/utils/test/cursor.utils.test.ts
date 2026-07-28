@@ -126,5 +126,67 @@ describe('Cursor Utils', () => {
 
          expect(decoded).toEqual(specialPayload);
       });
+
+      // #679 — round-trip coverage for the exact ID/sort-value type
+      // combinations pagination callers rely on, with strict (not loose)
+      // equality on the decoded values.
+
+      it('round-trips an integer ID with a timestamp sort value without data loss', () => {
+         const payload = {
+            id: 42,
+            createdAt: '2024-03-15T09:30:00.000Z',
+         };
+
+         const cursor = encodeCursor(payload);
+         const decoded = decodeCursor<typeof payload>(cursor);
+
+         expect(typeof decoded.id).toBe('number');
+         expect(decoded.id).toBe(42);
+         expect(decoded.createdAt).toBe('2024-03-15T09:30:00.000Z');
+         expect(decoded).toStrictEqual(payload);
+      });
+
+      it('round-trips a string ID with a numeric sort value without data loss', () => {
+         const payload = {
+            id: 'creator_abc123',
+            sortValue: 987654321,
+         };
+
+         const cursor = encodeCursor(payload);
+         const decoded = decodeCursor<typeof payload>(cursor);
+
+         expect(typeof decoded.id).toBe('string');
+         expect(decoded.id).toBe('creator_abc123');
+         expect(typeof decoded.sortValue).toBe('number');
+         expect(decoded.sortValue).toBe(987654321);
+         expect(decoded).toStrictEqual(payload);
+      });
+
+      it('throws CursorChecksumError for a base64-tampered cursor (mid-string modification)', () => {
+         const payload = { id: 7, createdAt: '2024-01-01T00:00:00.000Z' };
+         const cursor = encodeCursor(payload);
+         const [base64Payload, checksum] = cursor.split('.');
+
+         // Flip a character in the middle of the base64 payload segment
+         // rather than at the edge, to prove tampering is caught
+         // regardless of where in the string it occurs.
+         const midpoint = Math.floor(base64Payload.length / 2);
+         const midChar = base64Payload[midpoint];
+         const replacement = midChar === 'A' ? 'B' : 'A';
+         const tamperedPayload =
+            base64Payload.slice(0, midpoint) +
+            replacement +
+            base64Payload.slice(midpoint + 1);
+         const tamperedCursor = `${tamperedPayload}.${checksum}`;
+
+         expect(tamperedCursor).not.toBe(cursor);
+         expect(() => decodeCursor(tamperedCursor)).toThrow(
+            CursorChecksumError
+         );
+      });
+
+      it('throws CursorChecksumError for an empty string cursor', () => {
+         expect(() => decodeCursor('')).toThrow(CursorChecksumError);
+      });
    });
 });
