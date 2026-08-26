@@ -105,6 +105,7 @@ export async function getCreatorProfile(
          updatedAt: null,
          perks: [],
          links: [],
+         tradingPaused: false,
          currentPrice: null,
          price24hAgo: null,
          priceChange24h: null,
@@ -138,6 +139,7 @@ export async function getCreatorProfile(
       updatedAt: formatIsoTimestamp(profile.updatedAt),
       perks: (profile.perks as any) || [],
       links: [], // Links are not yet in the Prisma model, keeping as part of contract
+      tradingPaused: (profile as any).tradingPaused ?? false,
       currentPrice: snapshot ? snapshot.currentPrice.toString() : null,
       price24hAgo: snapshot ? snapshot.price24hAgo.toString() : null,
       priceChange24h,

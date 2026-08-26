@@ -47,6 +47,8 @@ export const CreatorProfileReadResponseSchema = z.object({
    updatedAt: z.string().datetime().nullable(),
    perks: z.array(CreatorPerkSchema).optional(),
    links: z.array(z.object({ label: z.string(), url: z.string().url() })),
+   /** Whether trading is temporarily paused for this key by an admin. */
+   tradingPaused: z.boolean(),
    /** Current key price in stroops as a string. null when no trade has occurred. */
    currentPrice: z.string().nullable(),
    /** Price 24 h ago in stroops as a string. null when no baseline exists. */
