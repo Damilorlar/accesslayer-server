@@ -1,6 +1,8 @@
 import request from 'supertest';
-import { prisma } from '../../utils/prisma.utils';
 
+// Prisma is stubbed so importing the app does not construct a real client.
+// Every case here is rejected by address validation before the handler runs,
+// so no query is ever issued.
 jest.mock('../../utils/prisma.utils', () => ({
    prisma: {
       activity: {
@@ -14,14 +16,6 @@ jest.mock('../../utils/prisma.utils', () => ({
 }));
 
 import app from '../../app';
-
-const mockPrisma = prisma as unknown as {
-   activity: { findMany: jest.Mock; count: jest.Mock };
-   creatorProfile: { findMany: jest.Mock };
-};
-
-const VALID_ADDRESS =
-   'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF';
 
 describe('GET /api/v1/wallets/:address/activity - Malformed Stellar Address', () => {
    beforeEach(() => {
@@ -80,18 +74,8 @@ describe('GET /api/v1/wallets/:address/activity - Malformed Stellar Address', ()
       ).toBeTruthy();
    });
 
-   it('should return 200 with empty data array for a valid Stellar address with no trade history', async () => {
-      mockPrisma.activity.findMany.mockResolvedValue([]);
-      mockPrisma.activity.count.mockResolvedValue(0);
-      mockPrisma.creatorProfile.findMany.mockResolvedValue([]);
-
-      const response = await request(app)
-         .get(`/api/v1/wallets/${VALID_ADDRESS}/activity`)
-         .expect(200);
-
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.items).toEqual([]);
-      expect(response.body.data.meta.total).toBe(0);
-      expect(response.body.data.meta.hasMore).toBe(false);
-   });
+   // The valid-address-with-no-trades case used to live here. It is not about
+   // malformed addresses, and it asserted only part of the empty-page
+   // contract, so it moved to wallet-activity-empty-history.integration.test.ts
+   // (#642), which covers it in full.
 });

@@ -49,6 +49,7 @@ export const WalletActivityItemSchema = z.object({
    amount: z.any(),
    price_at_trade: z.any(),
    fee_paid: z.any(),
+   xlm_delta: z.string().nullable().optional(),
    ledger_sequence: z.number().nullable(),
    timestamp: z.date(),
 });

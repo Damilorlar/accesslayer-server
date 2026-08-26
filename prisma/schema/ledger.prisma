@@ -6,3 +6,15 @@ model IndexedLedger {
 
   @@map("indexed_ledgers")
 }
+
+model LedgerCheckpoint {
+  id                    Int      @id @default(autoincrement())
+  ledger                Int
+  lastProcessedEventIndex Int
+  batchHash             String
+  completedAt           DateTime @default(now())
+
+  @@unique([ledger])
+  @@index([ledger])
+  @@map("ledger_checkpoints")
+}

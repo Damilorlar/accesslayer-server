@@ -11,6 +11,8 @@ export interface TradeEventPayload {
    price: bigint;
    /** ISO timestamp of the trade */
    tradeAt: Date;
+   /** Ledger sequence number the trade was included in */
+   ledger?: number;
 }
 
 /**
@@ -25,7 +27,7 @@ export interface TradeEventPayload {
 export async function upsertPriceSnapshot(
    event: TradeEventPayload
 ): Promise<void> {
-   const { creatorId, price, tradeAt } = event;
+   const { creatorId, price, tradeAt, ledger } = event;
 
    try {
       const existing = await prisma.creatorPriceSnapshot.findUnique({
@@ -42,13 +44,20 @@ export async function upsertPriceSnapshot(
                lastTradeAt: tradeAt,
             },
          });
+         await prisma.creatorPriceHistory.create({
+            data: {
+               creatorId,
+               price,
+               recordedAt: tradeAt,
+            },
+         });
          logger.debug(
             {
                creator_id: creatorId,
                new_price: price.toString(),
                previous_price: null,
-               ledger_sequence: null,
-               written_at: tradeAt.toISOString(),
+               ledger: ledger ?? null,
+               ingested_at: new Date().toISOString(),
             },
             'price-snapshot: written (first trade)'
          );
@@ -84,13 +93,20 @@ export async function upsertPriceSnapshot(
             lastTradeAt: tradeAt,
          },
       });
+      await prisma.creatorPriceHistory.create({
+         data: {
+            creatorId,
+            price,
+            recordedAt: tradeAt,
+         },
+      });
       logger.debug(
          {
             creator_id: creatorId,
             new_price: price.toString(),
             previous_price: existing.currentPrice.toString(),
-            ledger_sequence: null,
-            written_at: tradeAt.toISOString(),
+            ledger: ledger ?? null,
+            ingested_at: new Date().toISOString(),
          },
          'price-snapshot: written'
       );

@@ -70,12 +70,15 @@ export const httpListCreators: AsyncController = async (req, res, next) => {
       // Fetch creators and total count
       const [creators, total] = await fetchCreatorList(validatedQuery);
 
-      const response: CreatorListResponse = serializeCreatorListResponse(
+      const response: CreatorListResponse = await serializeCreatorListResponse(
          creators,
          buildOffsetPaginationMeta({
             limit: validatedQuery.limit,
             offset: validatedQuery.offset,
             total,
+            ...(validatedQuery.search !== undefined && total === 0
+               ? { searchTerm: validatedQuery.search }
+               : {}),
          })
       );
 
@@ -117,21 +120,50 @@ function categorizeParseError(
 export const httpGetCreatorStats: AsyncController = async (req, res, next) => {
    try {
       const rawId = req.params.id;
-      const _creatorId = parseCreatorId(
-         Array.isArray(rawId) ? rawId[0] : rawId
-      );
+      const parsedId = parseCreatorId(Array.isArray(rawId) ? rawId[0] : rawId);
+      const creatorIdStr = String(parsedId);
 
-      // TODO: Fetch actual creator metrics from database/service using _creatorId
-      // For now, return placeholder data
-      const placeholderMetrics = {
-         holderCount: 0,
-         totalSupply: 0,
+      const creator = await prisma.creatorProfile.findFirst({
+         where: { OR: [{ id: creatorIdStr }, { handle: creatorIdStr }] },
+         select: { id: true },
+      });
+      const resolvedId = creator ? creator.id : creatorIdStr;
+
+      const [holderCount, supplyAggregate, priceSnapshot] = await Promise.all([
+         prisma.keyOwnership.count({
+            where: {
+               creatorId: resolvedId,
+               balance: { gt: 0 },
+            },
+         }),
+         // Bug fix (#678): totalSupply was previously hardcoded to 0 instead
+         // of being derived from the ownership read model, so it never
+         // reflected keys minted by buy transactions.
+         prisma.keyOwnership.aggregate({
+            where: { creatorId: resolvedId },
+            _sum: { balance: true },
+         }),
+         prisma.creatorPriceSnapshot.findUnique({
+            where: { creatorId: resolvedId },
+            select: { currentPrice: true },
+         }),
+      ]);
+
+      const totalSupply = Number(supplyAggregate._sum.balance ?? 0);
+      const currentPrice = priceSnapshot
+         ? priceSnapshot.currentPrice.toString()
+         : null;
+
+      const metrics = {
+         holderCount,
+         totalSupply,
          totalVolume: 0,
+         currentPrice,
          lastActivityAt: undefined,
       };
 
       // Serialize using the public stats mapper
-      const stats = mapPublicCreatorStats(placeholderMetrics);
+      const stats = mapPublicCreatorStats(metrics);
 
       attachTimestampHeader(res);
       sendSuccess(res, stats);
@@ -163,12 +195,147 @@ export const httpGetCreator: AsyncController = async (req, res, next) => {
 };
 
 /**
+ * Controller for GET /api/v1/creators/leaderboard
+ *
+ * Returns creators ranked by holder count descending. Ties are broken
+ * alphabetically by creator (Stellar wallet) address so the ordering is
+ * stable across requests regardless of database iteration order.
+ */
+export const httpGetCreatorLeaderboard: AsyncController = async (
+   _req,
+   res,
+   next
+) => {
+   try {
+      const creators = await prisma.creatorProfile.findMany({
+         select: {
+            id: true,
+            handle: true,
+            priceSnapshot: {
+               select: { currentPrice: true },
+            },
+            user: {
+               select: {
+                  stellarWallet: {
+                     select: { address: true },
+                  },
+               },
+            },
+         },
+      });
+
+      const entries = await Promise.all(
+         creators.map(async creator => {
+            const holderCount = await prisma.keyOwnership.count({
+               where: {
+                  creatorId: creator.id,
+                  balance: { gt: 0 },
+               },
+            });
+
+            const address =
+               (creator as any).user?.stellarWallet?.address ?? creator.handle;
+            const currentPrice = (creator as any).priceSnapshot
+               ? (creator as any).priceSnapshot.currentPrice.toString()
+               : '0';
+
+            return {
+               creator: address as string,
+               holder_count: holderCount,
+               current_price: currentPrice,
+            };
+         })
+      );
+
+      entries.sort((a, b) => {
+         if (b.holder_count !== a.holder_count) {
+            return b.holder_count - a.holder_count;
+         }
+         // Stable, deterministic tie-break: ascending alphabetical order
+         // by creator address.
+         if (a.creator < b.creator) return -1;
+         if (a.creator > b.creator) return 1;
+         return 0;
+      });
+
+      const items = entries.map((entry, index) => ({
+         rank: index + 1,
+         ...entry,
+      }));
+
+      attachTimestampHeader(res);
+      sendSuccess(res, { items });
+   } catch (error) {
+      next(error);
+   }
+};
+
+/**
+ * Controller for GET /api/v1/creators/:id/analytics
+ *
+ * Returns buy volume (total XLM spent in stroops) and unique buyer count
+ * aggregated from the creator's trade history.
+ * Requires wallet ownership — only the authenticated creator can access
+ * their own analytics.
+ */
+export const httpGetCreatorAnalytics: AsyncController = async (
+   req,
+   res,
+   next
+) => {
+   try {
+      const rawId = req.params.id;
+      const creatorId = Array.isArray(rawId) ? rawId[0] : rawId;
+
+      // Resolve the creator profile to get the canonical ID
+      const creator = await prisma.creatorProfile.findFirst({
+         where: { OR: [{ id: creatorId }, { handle: creatorId }] },
+         select: { id: true },
+      });
+      const resolvedId = creator ? creator.id : creatorId;
+
+      // Fetch all trades for this creator
+      const trades = await prisma.trade.findMany({
+         where: { creatorId: resolvedId },
+         select: {
+            buyer: true,
+            price: true,
+         },
+      });
+
+      // Compute total buy volume (sum of prices, in stroops)
+      let buyVolume = 0n;
+      const uniqueBuyers = new Set<string>();
+
+      for (const trade of trades) {
+         const price = BigInt(trade.price);
+         buyVolume += price;
+         uniqueBuyers.add(trade.buyer);
+      }
+
+      const analytics = {
+         buyVolume: buyVolume.toString(),
+         uniqueBuyers: uniqueBuyers.size,
+      };
+
+      attachTimestampHeader(res);
+      sendSuccess(res, analytics);
+   } catch (error) {
+      next(error);
+   }
+};
+
+/**
  * Controller for GET /api/v1/creators/trending
  *
  * Returns creators ordered by 24h trading volume descending.
  * Respects pagination limit parameters.
  */
-export const httpGetTrendingCreators: AsyncController = async (req, res, next) => {
+export const httpGetTrendingCreators: AsyncController = async (
+   req,
+   res,
+   next
+) => {
    try {
       const ctx = buildCreatorListRequestContext(req);
 
@@ -200,7 +367,7 @@ export const httpGetTrendingCreators: AsyncController = async (req, res, next) =
 
       // Compute volume for each creator
       const creatorsWithVolume = await Promise.all(
-         creators.map(async (creator) => {
+         creators.map(async creator => {
             const volume = await compute24hVolume(creator.id);
             return {
                id: creator.id,
@@ -216,7 +383,7 @@ export const httpGetTrendingCreators: AsyncController = async (req, res, next) =
       );
 
       // Sort by volume descending
-      creatorsWithVolume.sort((a, b) => {
+      creatorsWithVolume.sort((a: { volume_24h: string }, b: { volume_24h: string }) => {
          const volA = BigInt(a.volume_24h);
          const volB = BigInt(b.volume_24h);
          if (volB > volA) return 1;

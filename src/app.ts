@@ -19,23 +19,31 @@ import { requestEntryLoggerMiddleware } from './middlewares/request-entry-logger
 import { requestCompletionLoggerMiddleware } from './middlewares/request-completion-logger.middleware';
 import { bodyParseErrorMiddleware } from './middlewares/body-parse-error.middleware';
 import { envConfig } from './config';
+import { logger } from './utils/logger.utils';
 
 const app: Express = express();
 
 // Middleware setup
 app.set('trust proxy', 1);
 app.use(responseTimingMiddleware);
+// requestIdMiddleware must run before requestContextMiddleware: it assigns
+// req.traceId/req.requestId, which requestContextMiddleware then captures
+// into AsyncLocalStorage for the rest of the request's call stack.
+app.use(requestIdMiddleware);
 app.use(requestContextMiddleware);
 app.use(apiVersionMiddleware);
 app.use(schemaVersionMiddleware);
-app.use(requestIdMiddleware);
 app.use(requestEntryLoggerMiddleware);
 app.use(requestCompletionLoggerMiddleware);
 app.use(corsMiddleware());
 app.use(helmet());
 
-app.use(express.json({ limit: '10mb' }));
-app.use(bodyParseErrorMiddleware);
+// Request body parsing is applied per route group (see modules/index.ts)
+// via routeBodySizeLimit, so each group can have its own configured size
+// limit instead of one global express.json() call. bodyParseErrorMiddleware
+// is mounted after the router (below) since that's where those parsers
+// actually live now — Express only walks forward to later error handlers,
+// so it has to come after the point where the parse error can occur.
 
 if (!envConfig.ENABLE_REQUEST_LOGGING) {
    app.use(morgan('combined'));
@@ -55,7 +63,7 @@ async function setupTspecDocs() {
          ...(tspecMiddlewares as unknown as RequestHandler[])
       );
    } catch (error) {
-      console.error('Failed to setup API docs:', error);
+      logger.error({ error }, 'Failed to setup API docs');
    }
 }
 
@@ -86,6 +94,11 @@ app.get('/', (_, res: Response) => {
 
 // Routes
 app.use('/api/v1', router);
+
+// Catches body-parse errors (including entity.too.large from the per-group
+// JSON parsers mounted inside router) — must come after the router since
+// that's where those parsers run.
+app.use(bodyParseErrorMiddleware);
 
 // 404 handler - MUST come after all routes
 app.use(notFoundHandler);

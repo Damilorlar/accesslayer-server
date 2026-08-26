@@ -1,0 +1,133 @@
+// src/modules/keys/key-fees.service.ts
+import { prisma } from '../../utils/prisma.utils';
+import { getRedis } from '../../utils/redis.utils';
+import {
+   KEY_FEES_CACHE_TTL_SECONDS,
+   REDIS_KEYS,
+} from '../../constants/notifications.constants';
+
+export type KeyFees = {
+   protocolFeeBps: number;
+   creatorRoyaltyBuyBps: number;
+   creatorRoyaltySellBps: number;
+};
+
+export class KeyNotFoundError extends Error {
+   constructor(keyId: string) {
+      super(`Key not found: ${keyId}`);
+      this.name = 'KeyNotFoundError';
+   }
+}
+
+async function loadProtocolFeeBps(): Promise<number> {
+   const config = await prisma.protocolConfig.upsert({
+      where: { id: 'default' },
+      create: { id: 'default', protocolFeeBps: 500 },
+      update: {},
+      select: { protocolFeeBps: true },
+   });
+   return config.protocolFeeBps;
+}
+
+export async function getKeyFees(keyId: string): Promise<KeyFees> {
+   const redis = getRedis();
+   const cacheKey = REDIS_KEYS.keyFees(keyId);
+   const cached = await redis.get(cacheKey);
+   if (cached) {
+      return JSON.parse(cached) as KeyFees;
+   }
+
+   const creator = await prisma.creatorProfile.findUnique({
+      where: { id: keyId },
+      select: {
+         creatorRoyaltyBuyBps: true,
+         creatorRoyaltySellBps: true,
+      },
+   });
+
+   if (!creator) {
+      throw new KeyNotFoundError(keyId);
+   }
+
+   const protocolFeeBps = await loadProtocolFeeBps();
+   const fees: KeyFees = {
+      protocolFeeBps,
+      creatorRoyaltyBuyBps: creator.creatorRoyaltyBuyBps,
+      creatorRoyaltySellBps: creator.creatorRoyaltySellBps,
+   };
+
+   await redis.set(
+      cacheKey,
+      JSON.stringify(fees),
+      'EX',
+      KEY_FEES_CACHE_TTL_SECONDS
+   );
+
+   return fees;
+}
+
+export async function invalidateKeyFeesCache(keyId: string): Promise<void> {
+   await getRedis().del(REDIS_KEYS.keyFees(keyId));
+}
+
+/**
+ * Invalidate fee caches for every known key. Used when the protocol fee changes.
+ */
+export async function invalidateAllKeyFeesCaches(): Promise<void> {
+   const redis = getRedis();
+   const creators = await prisma.creatorProfile.findMany({
+      select: { id: true },
+   });
+   if (creators.length === 0) {
+      return;
+   }
+   const pipeline = redis.pipeline();
+   for (const creator of creators) {
+      pipeline.del(REDIS_KEYS.keyFees(creator.id));
+   }
+   await pipeline.exec();
+}
+
+export async function updateProtocolFeeBps(
+   protocolFeeBps: number
+): Promise<{ protocolFeeBps: number }> {
+   const updated = await prisma.protocolConfig.upsert({
+      where: { id: 'default' },
+      create: { id: 'default', protocolFeeBps },
+      update: { protocolFeeBps },
+      select: { protocolFeeBps: true },
+   });
+   await invalidateAllKeyFeesCaches();
+   return updated;
+}
+
+export async function updateCreatorRoyalties(
+   keyId: string,
+   royalties: {
+      creatorRoyaltyBuyBps?: number;
+      creatorRoyaltySellBps?: number;
+   }
+): Promise<KeyFees> {
+   const creator = await prisma.creatorProfile.findUnique({
+      where: { id: keyId },
+      select: { id: true },
+   });
+   if (!creator) {
+      throw new KeyNotFoundError(keyId);
+   }
+
+   await prisma.creatorProfile.update({
+      where: { id: keyId },
+      data: {
+         ...(royalties.creatorRoyaltyBuyBps !== undefined
+            ? { creatorRoyaltyBuyBps: royalties.creatorRoyaltyBuyBps }
+            : {}),
+         ...(royalties.creatorRoyaltySellBps !== undefined
+            ? { creatorRoyaltySellBps: royalties.creatorRoyaltySellBps }
+            : {}),
+      },
+   });
+
+   await invalidateKeyFeesCache(keyId);
+   return getKeyFees(keyId);
+}

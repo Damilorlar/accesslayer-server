@@ -11,7 +11,7 @@ import {
 import { buildOffsetPaginationMeta } from '../../utils/pagination.utils';
 import { logger } from '../../utils/logger.utils';
 import { maskSensitive } from '../../utils/mask-sensitive.utils';
-
+import { truncateWallet } from '../../utils/wallet-display.utils';
 export async function httpGetWalletActivity(
    req: Request,
    res: Response,
@@ -59,11 +59,7 @@ export async function httpGetWalletActivity(
       if (parsedQuery.data.type) filters_applied.push('type');
       if (parsedQuery.data.creator_id) filters_applied.push('creator_id');
 
-      const address = parsedParams.data.address;
-      const maskedAddress =
-         address.length >= 8
-            ? `${address.slice(0, 4)}...${address.slice(-4)}`
-            : address;
+      const maskedAddress = truncateWallet(parsedParams.data.address);
 
       logger.debug(
          maskSensitive({

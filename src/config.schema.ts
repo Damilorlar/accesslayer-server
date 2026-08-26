@@ -91,15 +91,32 @@ export const envSchema = z
          .min(32, 'APP_SECRET should be at least 32 characters')
          .default('accesslayer_default_development_secret_key_32_bytes_long'),
 
+      // JWT auth
+      JWT_SECRET: z
+         .string()
+         .min(32, 'JWT_SECRET should be at least 32 characters')
+         .default('accesslayer_default_development_jwt_secret_key_32_bytes'),
+      JWT_ISSUER: z.string().default('accesslayer-server'),
+      JWT_ACCESS_TOKEN_TTL_SECONDS: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(900),
+
+      // Redis cache
+      REDIS_URL: z.string().default('redis://localhost:6379'),
+      ENABLE_REDIS_CACHE: booleanCoerce.default(true),
+
+      // Key trade lockup
+      LOCKUP_DURATION_SECONDS: z.coerce.number().int().nonnegative().default(0),
+
       INDEXER_JITTER_FACTOR: z.coerce.number().min(0).max(1).default(0.1),
       BACKGROUND_JOB_LOCK_TTL_MS: z.coerce
          .number()
          .int()
          .positive()
          .default(300000),
-      SLOW_QUERY_THRESHOLD_MS: z.coerce.number().int().positive().default(200),
-      DB_POOL_WAIT_WARN_MS: z.coerce.number().int().positive().default(500),
-      DB_POOL_WAIT_ERROR_MS: z.coerce.number().int().positive().default(2000),
+      SLOW_QUERY_THRESHOLD_MS: z.coerce.number().int().positive().default(500),
       CREATOR_LIST_SLOW_QUERY_THRESHOLD_MS: z.coerce
          .number()
          .int()
@@ -114,15 +131,6 @@ export const envSchema = z
          .number()
          .positive()
          .default(300000),
-
-      // Webhook settings
-      WEBHOOK_MAX_PER_CREATOR: z.coerce.number().int().positive().default(5),
-      WEBHOOK_RETRY_MAX_ATTEMPTS: z.coerce.number().int().positive().default(3),
-      WEBHOOK_RETRY_BASE_DELAY_MS: z.coerce
-         .number()
-         .int()
-         .positive()
-         .default(1000),
 
       // Indexer feature flags
       ENABLE_INDEXER_DEDUPE: booleanCoerce.default(true),
@@ -166,6 +174,37 @@ export const envSchema = z
          .int()
          .positive()
          .default(60),
+
+      // Price movement detection job (feeds price_moved notifications)
+      DETECT_PRICE_MOVEMENTS_ENABLED: booleanCoerce.default(true),
+      DETECT_PRICE_MOVEMENTS_INTERVAL_MINUTES: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(5),
+
+      // Governance proposal sync job
+      GOVERNANCE_SYNC_ENABLED: booleanCoerce.default(false),
+      GOVERNANCE_SYNC_INTERVAL_MINUTES: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(5),
+
+      // Request body size limits (see docs/body-size-limits.md).
+      // Accepts any size string understood by the `bytes` package used
+      // internally by body-parser (e.g. '100kb', '1mb', '10mb').
+      BODY_SIZE_LIMIT_DEFAULT: z.string().min(1).default('10mb'),
+      BODY_SIZE_LIMIT_AUTH: optionalNonEmptyString,
+      BODY_SIZE_LIMIT_ADMIN: optionalNonEmptyString,
+      BODY_SIZE_LIMIT_CREATORS: optionalNonEmptyString,
+
+      // Distributed tracing
+      // Shared secret trusted internal callers present in the
+      // `x-internal-service-token` header to have their incoming
+      // `X-Trace-Id` header honored instead of a freshly generated one.
+      // Left unset by default, so no caller is trusted unless configured.
+      TRACE_ID_TRUSTED_TOKEN: optionalNonEmptyString,
    })
    .superRefine((data, ctx) => {
       if (data.MODE === 'production' && data.STELLAR_NETWORK === 'testnet') {

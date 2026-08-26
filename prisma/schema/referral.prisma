@@ -1,0 +1,32 @@
+// prisma/schema/referral.prisma
+
+/**
+ * Referral fee earnings indexed from the on-chain `referral_fee_paid` event.
+ *
+ * One row per fee payment. `walletAddress` is the referrer who earned the
+ * fee; `keyId`/`creatorId` identify the key trade that generated it.
+ */
+model ReferralEvent {
+  id            String   @id @default(cuid())
+
+  // Referrer wallet that earned this fee
+  walletAddress String
+
+  // Key (creator id) whose trade generated the fee
+  keyId         String
+
+  // Optional denormalised creator id for joins
+  creatorId     String?
+
+  // Fee amount in XLM
+  amount        Decimal
+
+  // Transaction correlation
+  txHash        String?
+  eventIndex    Int?
+
+  createdAt     DateTime @default(now())
+
+  @@index([walletAddress, createdAt])
+  @@index([keyId])
+}

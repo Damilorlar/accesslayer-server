@@ -1,0 +1,15 @@
+// prisma/schema/price-history.prisma
+// Historical price data points written on every trade event.
+// Enables computing price change over arbitrary time windows (1h, 24h, 7d, etc.).
+
+model CreatorPriceHistory {
+  id        String   @id @default(cuid())
+  creatorId String
+  price     BigInt
+  recordedAt DateTime @default(now())
+
+  creator   CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@index([creatorId, recordedAt])
+  @@map("creator_price_history")
+}

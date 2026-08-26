@@ -1,6 +1,7 @@
 // prisma/schema/creator.prisma
 
 model CreatorProfile {
+fix/trading-paused-banner
   id          String   @id @default(cuid())
   userId      String   @unique
   handle      String   @unique
@@ -16,4 +17,65 @@ model CreatorProfile {
 
   user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   priceSnapshot CreatorPriceSnapshot?
+
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  handle          String   @unique
+  displayName     String
+  bio             String?
+  avatarUrl       String?
+  perkSummary     String?
+  isVerified      Boolean  @default(false)
+  tradingPaused   Boolean  @default(false)
+  circulatingSupply Decimal @default(0)
+  /// Maximum number of keys that can exist (null = uncapped).
+  supplyCap         Int?
+  /// Number of keys that have been burned.
+  burnedSupply      Int      @default(0)
+  /// Creator royalty charged on buys, in basis points (100 = 1%).
+  creatorRoyaltyBuyBps  Int @default(0)
+  /// Creator royalty charged on sells, in basis points (100 = 1%).
+  creatorRoyaltySellBps Int @default(0)
+  perks           Json?
+  followersCount  Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  priceSnapshot  CreatorPriceSnapshot?
+  priceHistory   CreatorPriceHistory[]
+  pendingPurchases PendingKeyPurchase[]
+  posts          CreatorPost[]
+  followers      Follow[]
+}
+
+model PendingKeyPurchase {
+  id             String   @id @default(cuid())
+  creatorId      String
+  buyerAddress   String
+  memo           String   @unique
+  quantity       Decimal
+  status         String   @default("PENDING")
+  transactionHash String?
+  settledAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  creator CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@index([creatorId, status])
+  @@index([buyerAddress, status])
+}
+
+model CreatorPost {
+  id        String         @id @default(cuid())
+  content   String
+  creatorId String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  creator CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@index([creatorId, createdAt])
+main
 }

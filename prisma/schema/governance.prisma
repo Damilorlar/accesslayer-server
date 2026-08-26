@@ -1,0 +1,21 @@
+// prisma/schema/governance.prisma
+
+model GovernanceProposal {
+  id                String   @id @default(cuid())
+  keyId             String
+  proposalId        String
+  title             String
+  options           Json     // string[] of option labels
+  totalVotingWeight String   @default("0")
+  results           Json     // { [option: string]: string } option -> weight
+  snapshotLedger    Int
+  expiresAt         DateTime
+  closedAt          DateTime?
+  status            String   @default("active") // active | closed
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([keyId, proposalId])
+  @@index([keyId, status])
+  @@index([keyId, expiresAt])
+}

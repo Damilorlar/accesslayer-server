@@ -13,6 +13,7 @@ import {
  *   { amount, price_at_trade, fee_paid, ledger_sequence }
  */
 import { decodeCursor, encodeCursor } from '../../utils/cursor.utils';
+import { formatXlmDelta } from '../../utils/xlm-delta.utils';
 
 /**
  * Shape of decoded activity cursor
@@ -106,9 +107,24 @@ export async function fetchWalletActivity(
          createdAt: Date;
       }) => {
          const payload = (row.payload ?? {}) as Record<string, any>;
+         const type = row.type === 'KEY_BOUGHT' ? 'buy' : 'sell';
+
+         // A buy spends XLM (outgoing); a sell receives XLM (incoming).
+         let xlmDelta: string | null = null;
+         if (payload.price_at_trade != null) {
+            try {
+               xlmDelta = formatXlmDelta(
+                  BigInt(payload.price_at_trade),
+                  type === 'buy' ? 'out' : 'in'
+               );
+            } catch (_e) {
+               xlmDelta = null;
+            }
+         }
+
          return {
             id: row.id,
-            type: row.type === 'KEY_BOUGHT' ? 'buy' : 'sell',
+            type,
             creator_id: row.creatorId ?? '',
             creator_handle: row.creatorId
                ? (handleMap.get(row.creatorId) ?? null)
@@ -116,6 +132,7 @@ export async function fetchWalletActivity(
             amount: payload.amount ?? null,
             price_at_trade: payload.price_at_trade ?? null,
             fee_paid: payload.fee_paid ?? null,
+            xlm_delta: xlmDelta,
             ledger_sequence:
                payload.ledger_sequence != null
                   ? Number(payload.ledger_sequence)

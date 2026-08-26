@@ -29,15 +29,15 @@ function getCreatorListCacheTtlMs(): number {
 function pruneCreatorListCache(now: number): void {
    for (const [cacheKey, entry] of creatorListCache.entries()) {
       if (entry.expiresAt <= now) {
+         creatorListCache.delete(cacheKey);
          logger.debug({
             msg: 'Creator list cache eviction',
             event: 'creator_list_cache_eviction',
-            cacheKey,
-            reason: 'expired',
-            expiresAt: entry.expiresAt,
-            now,
+            cache_key: cacheKey,
+            reason: 'ttl_expired',
+            cache_size_after: creatorListCache.size,
+            evicted_at: new Date(now).toISOString(),
          });
-         creatorListCache.delete(cacheKey);
       }
    }
 
@@ -51,15 +51,15 @@ function pruneCreatorListCache(now: number): void {
       .slice(0, overflow);
 
    for (const [cacheKey] of oldestEntries) {
+      creatorListCache.delete(cacheKey);
       logger.debug({
          msg: 'Creator list cache eviction',
          event: 'creator_list_cache_eviction',
-         cacheKey,
-         reason: 'overflow',
-         cacheSize: creatorListCache.size,
-         maxSize: MAX_CREATOR_LIST_CACHE_ENTRIES,
+         cache_key: cacheKey,
+         reason: 'capacity_overflow',
+         cache_size_after: creatorListCache.size,
+         evicted_at: new Date(now).toISOString(),
       });
-      creatorListCache.delete(cacheKey);
    }
 }
 
@@ -117,15 +117,15 @@ export function getCachedCreatorList(
    }
 
    if (cachedEntry) {
+      creatorListCache.delete(cacheKey);
       logger.debug({
          msg: 'Creator list cache eviction',
          event: 'creator_list_cache_eviction',
-         cacheKey,
-         reason: 'stale',
-         expiresAt: cachedEntry.expiresAt,
-         now,
+         cache_key: cacheKey,
+         reason: 'ttl_expired',
+         cache_size_after: creatorListCache.size,
+         evicted_at: new Date(now).toISOString(),
       });
-      creatorListCache.delete(cacheKey);
    }
 
    pruneCreatorListCache(now);
