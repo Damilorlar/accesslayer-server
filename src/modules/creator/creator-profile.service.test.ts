@@ -36,10 +36,8 @@ describe('getCreatorProfile', () => {
          updatedAt: null,
          perks: [],
          links: [],
- fix/trading-paused-banner
          tradingPaused: false,
 
-main
          currentPrice: null,
          price24hAgo: null,
          priceChange24h: null,
