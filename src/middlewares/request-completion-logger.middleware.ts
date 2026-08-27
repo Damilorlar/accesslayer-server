@@ -6,9 +6,13 @@ import { logger } from '../utils/logger.utils';
 // Emits a structured log with:
 // - request_id
 // - method
-// - path
+// - route (parametrised, e.g. /api/v1/creators/:id)
 // - status_code
 // - response_time_ms
+//
+// The route field uses the matched Express route pattern (req.route.path)
+// so log keys are low-cardinality. Falls back to the raw path when no
+// route matches (e.g. 404s).
 //
 // Log level rules:
 // - error for 5xx responses
@@ -33,13 +37,19 @@ export const requestCompletionLoggerMiddleware = (
       const responseTimeMs = diff[0] * 1e3 + diff[1] * 1e-6;
 
       const statusCode = res.statusCode;
-      const path = req.path;
       const method = req.method;
+
+      // Use the parametrised Express route pattern when available to avoid
+      // high-cardinality log keys. Falls back to req.path for unmatched
+      // routes (e.g. 404s).
+      const route = req.route
+         ? req.baseUrl + req.route.path
+         : req.baseUrl + req.path;
 
       const payload = {
          request_id: requestId,
          method,
-         path,
+         route,
          status_code: statusCode,
          response_time_ms: Math.round(responseTimeMs),
       };

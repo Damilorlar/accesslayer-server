@@ -12,6 +12,16 @@ import {
 import { checkOptionalDependencies } from './utils/startup.utils';
 import { describeDatabasePoolConfig } from './utils/db-pool-config.utils';
 import { stopOwnershipSnapshotCleanupJob } from './jobs/ownership-snapshot-cleanup.job';
+import {
+   startDetectPriceMovementsJob,
+   stopDetectPriceMovementsJob,
+} from './jobs/detect-price-movements.job';
+import {
+   startGovernanceSyncJob,
+   stopGovernanceSyncJob,
+} from './jobs/governance-sync.job';
+import { connectRedis, disconnectRedis } from './utils/redis.utils';
+import { broadcastServerClosing, closeAllConnections } from './utils/sse-fanout.utils';
 import { buildStartupConfigSummary } from './utils/config-summary.utils';
 
 async function startServer() {
@@ -35,6 +45,9 @@ async function startServer() {
       await prisma.$connect();
       logger.info('Connected to database');
 
+      await connectRedis();
+      logger.info('Connected to Redis');
+
       // Surface connection-pool settings (no credentials) so connection
       // exhaustion is diagnosable. Logged before the server accepts requests.
       logger.info(
@@ -57,34 +70,48 @@ async function startServer() {
       // Check and warn about disabled optional dependencies (non-blocking)
       checkOptionalDependencies();
 
+      startDetectPriceMovementsJob();
+      startGovernanceSyncJob();
+
       const server = app.listen(envConfig.PORT, () => {
          logger.info(`Server running on port ${envConfig.PORT}`);
       });
 
       return server;
    } catch (error) {
-      console.error('Failed to start server:', error);
+      logger.error({ error }, 'Failed to start server');
       await prisma.$disconnect();
+      await disconnectRedis().catch(() => {});
       process.exit(1);
    }
 }
 
 // Handle uncaught exceptions
 process.on('uncaughtException', error => {
-   console.error('Uncaught Exception:', error);
+   logger.fatal({ error }, 'Uncaught exception');
    process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+   logger.fatal({ reason, promise }, 'Unhandled promise rejection');
    process.exit(1);
 });
 
 function createGracefulShutdownHandler(server: ReturnType<typeof app.listen>) {
    return async () => {
+      logger.info('Shutting down SSE connections');
+      broadcastServerClosing();
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      closeAllConnections();
+
       stopOwnershipSnapshotCleanupJob();
+      stopDetectPriceMovementsJob();
+      stopGovernanceSyncJob();
       await prisma.$disconnect();
-      console.log('💾 Database connection closed');
+      logger.info('Database connection closed');
+
+      await disconnectRedis().catch(() => {});
+      logger.info('Redis connection closed');
 
       const DRAIN_WINDOW_MS = 5000;
       const SHUTDOWN_TIMEOUT_MS = 30000;
@@ -94,20 +121,23 @@ function createGracefulShutdownHandler(server: ReturnType<typeof app.listen>) {
       });
 
       const shutdownTimer = setTimeout(() => {
-         console.error('❌ Shutdown timeout reached, forcing exit');
+         logger.error('Shutdown timeout reached, forcing exit');
          process.exit(1);
       }, SHUTDOWN_TIMEOUT_MS);
 
       server.close(async () => {
          clearTimeout(shutdownTimer);
-         console.log('✅ HTTP server closed, draining requests');
+         logger.info('HTTP server closed, draining requests');
 
          await new Promise(resolve => setTimeout(resolve, DRAIN_WINDOW_MS));
 
          await prisma.$disconnect();
-         console.log('💾 Database connection closed');
+         logger.info('Database connection closed');
 
-         console.log('👋 Shutdown complete');
+         await disconnectRedis().catch(() => {});
+         logger.info('Redis connection closed');
+
+         logger.info('Shutdown complete');
          process.exit(0);
       });
    };

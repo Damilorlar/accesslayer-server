@@ -247,19 +247,26 @@ describe('DELETE /api/v1/creators/:id/webhooks/:webhookId', () => {
       expect(ids).not.toContain(webhookId);
    });
 
-   it('returns 404 for non-existent webhook', async () => {
-      const res = await supertest(app)
-         .delete(`/api/v1/creators/${creatorId}/webhooks/non-existent-id`)
-         .set(
-            authHeaders(
-               'DELETE',
-               `/api/v1/creators/${creatorId}/webhooks/non-existent-id`,
-               creatorId
-            )
-         );
+    it('returns 404 for non-existent webhook', async () => {
+       const res = await supertest(app)
+          .delete(`/api/v1/creators/${creatorId}/webhooks/non-existent-id`)
+          .set(
+             authHeaders(
+                'DELETE',
+                `/api/v1/creators/${creatorId}/webhooks/non-existent-id`,
+                creatorId
+             )
+          );
 
-      expect(res.status).toBe(404);
-   });
+       expect(res.status).toBe(404);
+       expect(res.body).toEqual({
+          success: false,
+          error: {
+             code: 'NOT_FOUND',
+             message: 'Webhook not found',
+          },
+       });
+    });
 
    it('stops future deliveries when a webhook is deleted (#506)', async () => {
       // Register a webhook and confirm it exists
@@ -310,6 +317,53 @@ describe('DELETE /api/v1/creators/:id/webhooks/:webhookId', () => {
       });
 
       expect(events.length).toBe(0);
+   });
+});
+
+describe('GET /api/v1/creators/:id/webhooks/:webhookId', () => {
+   it('returns 404 for non-existent webhook', async () => {
+      const res = await supertest(app)
+         .get(`/api/v1/creators/${creatorId}/webhooks/non-existent-id`)
+         .set(
+            authHeaders(
+               'GET',
+               `/api/v1/creators/${creatorId}/webhooks/non-existent-id`,
+               creatorId
+            )
+         );
+
+      expect(res.status).toBe(404);
+      expect(res.body).toEqual({
+         success: false,
+         error: {
+            code: 'NOT_FOUND',
+            message: 'Webhook not found',
+         },
+      });
+   });
+});
+
+describe('PATCH /api/v1/creators/:id/webhooks/:webhookId', () => {
+   it('returns 404 for non-existent webhook', async () => {
+      const res = await supertest(app)
+         .patch(`/api/v1/creators/${creatorId}/webhooks/non-existent-id`)
+         .set(
+            authHeaders(
+               'PATCH',
+               `/api/v1/creators/${creatorId}/webhooks/non-existent-id`,
+               creatorId
+            )
+         )
+         .send({ callback_url: 'https://example.com/updated' });
+
+      expect(res.status).toBe(404);
+      expect(res.body).toEqual({
+         success: false,
+         error: {
+            code: 'NOT_FOUND',
+            message: 'Webhook not found',
+         },
+      });
    });
 });
 

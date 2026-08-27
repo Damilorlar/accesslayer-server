@@ -104,6 +104,36 @@ describe('GET /wallets/:address/holdings', () => {
       });
    });
 
+   it('returns a holding with zero value when its creator has no price snapshot', async () => {
+      const holding = makeHolding({
+         creator_id: 'new-creator',
+         creator_handle: 'new-creator-handle',
+         key_count: '5',
+         current_price: null,
+         total_value: '0',
+      });
+      jest
+         .spyOn(walletHoldingsService, 'fetchWalletHoldings')
+         .mockResolvedValue([[holding], 1]);
+
+      const req = makeReq({ address: VALID_ADDRESS });
+      const res = makeRes();
+      const next = makeNext();
+      await httpGetWalletHoldings(req, res, next);
+
+      expect(next).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+      const body = res.json.mock.calls[0][0];
+      expect(body.data.items).toContainEqual(
+         expect.objectContaining({
+            creator_id: 'new-creator',
+            key_count: '5',
+            current_price: null,
+            total_value: '0',
+         })
+      );
+   });
+
    it('returns 200 with empty items for a wallet with no holdings', async () => {
       jest
          .spyOn(walletHoldingsService, 'fetchWalletHoldings')

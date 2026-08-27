@@ -1,0 +1,11 @@
+// prisma/schema/protocol-config.prisma
+// Singleton protocol fee configuration.
+
+model ProtocolConfig {
+  id             String   @id @default("default")
+  protocolFeeBps Int      @default(500)
+  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now())
+
+  @@map("protocol_config")
+}

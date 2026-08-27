@@ -20,19 +20,27 @@ describe('maskSensitive — sensitive keys masked to [REDACTED]', () => {
    });
 
    it('masks "callback" key', () => {
-      expect(maskSensitive({ callback: 'https://hooks.example.com/cb' })).toEqual({
+      expect(
+         maskSensitive({ callback: 'https://hooks.example.com/cb' })
+      ).toEqual({
          callback: '[REDACTED]',
       });
    });
 
    it('masks "address" key', () => {
       expect(
-         maskSensitive({ address: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' })
+         maskSensitive({
+            address: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+         })
       ).toEqual({ address: '[REDACTED]' });
    });
 
    it('masks "webhook_url" key', () => {
-      expect(maskSensitive({ webhook_url: 'https://discord.com/api/webhooks/123/abc' })).toEqual({
+      expect(
+         maskSensitive({
+            webhook_url: 'https://discord.com/api/webhooks/123/abc',
+         })
+      ).toEqual({
          webhook_url: '[REDACTED]',
       });
    });
@@ -110,20 +118,51 @@ describe('maskSensitive — nested objects', () => {
       });
    });
 
-   it('masks sensitive keys at multiple levels of nesting', () => {
+   it('masks sensitive key "url" inside nested webhook object', () => {
+      const result = maskSensitive({
+         webhook: { url: 'https://example.com' },
+      });
+      expect(result).toEqual({
+         webhook: { url: '[REDACTED]' },
+      });
+   });
+
+   it('masks callback values inside array of objects', () => {
+      const result = maskSensitive({
+         hooks: [{ callback: 'x' }, { callback: 'y' }],
+      });
+      expect(result).toEqual({
+         hooks: [{ callback: '[REDACTED]' }, { callback: '[REDACTED]' }],
+      });
+   });
+
+   it('preserves non-sensitive nested keys', () => {
+      const result = maskSensitive({
+         meta: { count: 5 },
+      });
+      expect(result).toEqual({
+         meta: { count: 5 },
+      });
+   });
+
+   it('masks a deeply nested sensitive key at 3 levels', () => {
       const result = maskSensitive({
          level1: {
             level2: {
-               url: 'https://deep.example.com',
-               safe: 'keep-me',
+               level3: {
+                  url: 'https://deep.example.com',
+                  safe: 'keep-me',
+               },
             },
          },
       });
       expect(result).toEqual({
          level1: {
             level2: {
-               url: '[REDACTED]',
-               safe: 'keep-me',
+               level3: {
+                  url: '[REDACTED]',
+                  safe: 'keep-me',
+               },
             },
          },
       });

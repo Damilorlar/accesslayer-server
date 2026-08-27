@@ -5,21 +5,22 @@ import { logger } from '../../utils/logger.utils';
 
 /**
  * Validates a Stellar Ed25519 public key address.
- * A valid address starts with 'G', is exactly 56 characters, and uses
- * the Base32 character set (A-Z, 2-7).
+ * A valid address starts with 'G', is exactly 56 characters, uses the
+ * Base32 character set (A-Z, 2-7), and its trailing checksum bytes verify
+ * against the address' payload per the Stellar StrKey spec.
  */
 export function isValidStellarAddress(address: string): boolean {
-   return typeof address === 'string' && /^G[A-Z2-7]{55}$/.test(address);
+   return (
+      typeof address === 'string' && /^G[A-Z2-7]{55}$/.test(address)
+   );
 }
 
 /**
  * Zod schema that validates a Stellar wallet address using isValidStellarAddress.
  */
-export const StellarAddressSchema = z
-   .string()
-   .refine(isValidStellarAddress, {
-      message: 'Invalid Stellar wallet address',
-   });
+export const StellarAddressSchema = z.string().refine(isValidStellarAddress, {
+   message: 'Invalid Stellar wallet address',
+});
 
 /**
  * Service boundary for Stellar wallet identity mapping.

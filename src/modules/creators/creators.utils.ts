@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../utils/prisma.utils';
 import { CreatorProfile } from '../../types/profile.types';
 import { CreatorListQueryType } from './creators.schemas';
@@ -40,7 +41,12 @@ export async function fetchCreatorList(
       minPrice,
       maxPrice,
    });
-   const orderBy = mapCreatorListSort(sort, order);
+   const orderBy: Prisma.CreatorProfileOrderByWithRelationInput[] = [
+      mapCreatorListSort(sort, order),
+      // Apply a deterministic tie-breaker so pagination stays stable when
+      // multiple creators share the same primary sort value.
+      { id: 'asc' },
+   ];
 
    // Fetch creators and total count in parallel
    const start = Date.now();
@@ -121,10 +127,10 @@ export async function fetchCreatorList(
  * const emptyResponse = createEmptyCreatorListResponse(validatedQuery);
  * // Returns: { items: [], meta: { limit, offset, total: 0, hasMore: false } }
  */
-export function createEmptyCreatorListResponse(
+export async function createEmptyCreatorListResponse(
    query: CreatorListQueryType
-): CreatorListResponse {
-   return serializeCreatorListResponse(
+): Promise<CreatorListResponse> {
+   return await serializeCreatorListResponse(
       [],
       buildOffsetPaginationMeta({
          limit: query.limit,

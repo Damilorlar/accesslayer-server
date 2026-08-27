@@ -13,6 +13,8 @@ export const ErrorCode = {
    RATE_LIMIT: 'RATE_LIMIT',
    PRISMA_ERROR: 'DATABASE_ERROR',
    JWT_ERROR: 'TOKEN_ERROR',
+   INSUFFICIENT_BALANCE: 'insufficient_balance',
+   NOT_A_CREATOR: 'not_a_creator',
 } as const;
 
 export type ErrorCodeType = (typeof ErrorCode)[keyof typeof ErrorCode];

@@ -1,0 +1,14 @@
+// prisma/schema/follow.prisma
+
+model Follow {
+  id              String   @id @default(cuid())
+  followerAddress String
+  creatorId       String
+  createdAt       DateTime @default(now())
+
+  creator CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@unique([followerAddress, creatorId])
+  @@index([creatorId])
+  @@index([followerAddress])
+}

@@ -34,12 +34,16 @@ See [Backend Domain Model and Endpoint Boundaries](./docs/architecture/domain-bo
 
 ## Local setup
 
+New contributors should follow the [Local Development Setup Guide](./docs/local-development-setup.md) — it covers prerequisites, environment configuration, migrations, seeding, starting the API server and indexer, and verifying the result end to end.
+
+Condensed version for returning contributors:
+
 ```bash
 pnpm install
-cp .env.example .env
+cp .env.example .env   # then fill the required credentials — see the setup guide
 pnpm db:up
-pnpm exec prisma generate
-pnpm exec prisma db push
+pnpm generate
+pnpm migrate
 pnpm dev
 ```
 

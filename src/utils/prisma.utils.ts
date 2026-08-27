@@ -3,6 +3,8 @@ import { createHash } from 'crypto';
 import { envConfig } from '../config';
 import { requestContextStorage } from './als.utils';
 import { logger } from './logger.utils';
+import { describeDatabasePoolConfig } from './db-pool-config.utils';
+import { logDbPoolAcquire, logDbPoolRelease } from './db-pool-log.utils';
 
 // Use global variable to prevent multiple instances in development
 declare global {
@@ -114,6 +116,21 @@ export const prisma = basePrisma.$extends({
             }, timeoutMs);
          });
 
+         const poolConfig = describeDatabasePoolConfig();
+         const poolSize =
+            typeof poolConfig.poolSize === 'number' ? poolConfig.poolSize : 10;
+
+         const acquiredAt = new Date();
+         const waitTimeMs = acquiredAt.getTime() - waitStart;
+         const acquireIdleCount = Math.max(0, poolSize - activeQueries);
+
+         logDbPoolAcquire({
+            poolSize,
+            idleCount: acquireIdleCount,
+            waitTimeMs,
+            acquiredAt,
+         });
+
          const start = Date.now();
          const queryPromise = query(args).finally(() => {
             clearTimeout(timeoutId);
@@ -121,13 +138,21 @@ export const prisma = basePrisma.$extends({
             activeQueries--;
             queryStartTimes.delete(queryId);
 
+            const heldForMs = Date.now() - acquiredAt.getTime();
+            const releaseIdleCount = Math.max(0, poolSize - activeQueries);
+            logDbPoolRelease({
+               poolSize,
+               idleCount: releaseIdleCount,
+               heldForMs,
+            });
+
             // Log if wait time exceeds thresholds
             if (waitTime > poolErrorThreshold) {
                logger.error(
                   {
                      type: 'database_pool_wait_exceeded',
                      waitTimeMs: waitTime,
-                     poolSize: 10, // Default Prisma pool size
+                     poolSize,
                      queueDepth: activeQueries,
                      endpoint: context?.path,
                      operation,
@@ -141,7 +166,7 @@ export const prisma = basePrisma.$extends({
                   {
                      type: 'database_pool_wait_exceeded',
                      waitTimeMs: waitTime,
-                     poolSize: 10, // Default Prisma pool size
+                     poolSize,
                      queueDepth: activeQueries,
                      endpoint: context?.path,
                      operation,

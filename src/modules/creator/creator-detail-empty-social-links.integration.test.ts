@@ -31,6 +31,8 @@ describe('creator detail integration - empty social links', () => {
          bio: 'Bio',
          avatarUrl: 'https://example.com/avatar.png',
          perks: [],
+         createdAt: new Date(),
+         updatedAt: new Date(),
       });
 
       const result = await getCreatorProfile('creator-1');

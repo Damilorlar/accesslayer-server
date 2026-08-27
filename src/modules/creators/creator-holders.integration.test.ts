@@ -43,10 +43,14 @@ function makeHolder(
    index: number,
    overrides: Partial<HolderRecord> = {}
 ): HolderRecord {
+   const key_balance = (4 - index) * 10; // 30, 20, 10 for indices 1, 2, 3
    return {
       wallet_address: `GWALLETADDRESS${String(index).padStart(46, '0')}`,
-      key_balance: (4 - index) * 10, // 30, 20, 10 for indices 1, 2, 3
+      key_balance,
       held_since: new Date(`2024-0${index}-01T00:00:00.000Z`),
+      key_count: key_balance,
+      share_percent: 0,
+      rank: index,
       ...overrides,
    };
 }

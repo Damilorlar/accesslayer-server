@@ -34,7 +34,11 @@ describe('getCreatorProfile', () => {
          avatarUrl: null,
          createdAt: null,
          updatedAt: null,
+         perks: [],
          links: [],
+         currentPrice: null,
+         price24hAgo: null,
+         priceChange24h: null,
          metadata: {
             source: 'placeholder',
             isProfileComplete: false,
@@ -90,7 +94,7 @@ describe('upsertCreatorProfile', () => {
       // Service trusts validated input — schema is the gate. This documents
       // the boundary so future contributors do not duplicate validation.
       const invalid = UpsertCreatorProfileBodySchema.safeParse({
-         displayName: 'A', // shorter than 2 chars
+         displayName: '', // empty post-strip display name
       });
       expect(invalid.success).toBe(false);
    });
@@ -131,7 +135,7 @@ describe('upsertCreatorProfile', () => {
          ],
       } as never);
 
-      expect(result.acceptedProfile.displayName).toHaveLength(80);
+      expect(result.acceptedProfile.displayName).toHaveLength(50);
       expect(result.acceptedProfile.bio).toHaveLength(1000);
       expect(result.acceptedProfile.links?.[0]?.label).toHaveLength(40);
       expect(result.acceptedProfile.perks?.[0]?.title).toHaveLength(100);

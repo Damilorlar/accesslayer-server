@@ -1,0 +1,52 @@
+// prisma/schema/governance.prisma
+
+model GovernanceProposal {
+  id                String   @id @default(cuid())
+  keyId             String
+  proposalId        String
+  title             String
+  options           Json     // string[] of option labels
+  totalVotingWeight String   @default("0")
+  results           Json     // { [option: string]: string } option -> weight
+  snapshotLedger    Int
+  expiresAt         DateTime
+  closedAt          DateTime?
+  status            String   @default("active") // active | closed
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([keyId, proposalId])
+  @@index([keyId, status])
+  @@index([keyId, expiresAt])
+}
+
+model PauseProposal {
+  id              String    @id @default(cuid())
+  proposalId      String    @unique
+  keyId           String
+  proposerWallet  String
+  approverWallet  String?
+  txHash          String?
+  status          String    @default("pending") // pending | executed | rejected | cancelled
+  createdAt       DateTime  @default(now())
+  executedAt      DateTime?
+
+  @@index([keyId, status])
+  @@index([proposerWallet])
+  @@map("pause_proposals")
+}
+
+model TimelockProposal {
+  id                 String    @id @default(cuid())
+  proposalId         String    @unique
+  changeType         String
+  payload            Json
+  executionNotBefore DateTime
+  status             String    @default("pending") // pending | executed | cancelled
+  createdAt          DateTime  @default(now())
+  executedAt         DateTime?
+
+  @@index([status])
+  @@map("timelock_proposals")
+}
+
