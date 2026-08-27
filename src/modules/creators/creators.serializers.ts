@@ -216,7 +216,6 @@ export type CreatorCursorListResponse = PublicCreatorListEnvelope<
  */
 export async function serializeCreatorListResponse(
    profiles: CreatorProfile[],
-no-results-state
    meta: OffsetPaginationMeta,
    options: { search?: string } = {}
 ): CreatorListResponse {
@@ -242,14 +241,6 @@ no-results-state
       state,
       ...(message ? { message } : {}),
    };
-
-   meta: OffsetPaginationMeta
-): Promise<CreatorListResponse> {
-   return wrapPublicCreatorListResponse(
-      await serializeCreatorList(profiles),
-      serializeCreatorListOffsetMeta(meta)
-   );
- main
 }
 
 /**
