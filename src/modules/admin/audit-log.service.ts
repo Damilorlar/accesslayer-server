@@ -21,7 +21,7 @@ export async function createAuditEntry(
             actorWallet: input.actorWallet,
             actionType: input.actionType,
             targetId: input.targetId,
-            payload: input.payload || null,
+            payload: input.payload ? (input.payload as any) : undefined,
          },
       });
    } catch (error) {

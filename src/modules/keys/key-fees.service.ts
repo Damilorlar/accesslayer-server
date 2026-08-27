@@ -32,9 +32,11 @@ async function loadProtocolFeeBps(): Promise<number> {
 export async function getKeyFees(keyId: string): Promise<KeyFees> {
    const redis = getRedis();
    const cacheKey = REDIS_KEYS.keyFees(keyId);
-   const cached = await redis.get(cacheKey);
-   if (cached) {
-      return JSON.parse(cached) as KeyFees;
+   if (redis) {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+         return JSON.parse(cached) as KeyFees;
+      }
    }
 
    const creator = await prisma.creatorProfile.findUnique({
@@ -56,18 +58,23 @@ export async function getKeyFees(keyId: string): Promise<KeyFees> {
       creatorRoyaltySellBps: creator.creatorRoyaltySellBps,
    };
 
-   await redis.set(
-      cacheKey,
-      JSON.stringify(fees),
-      'EX',
-      KEY_FEES_CACHE_TTL_SECONDS
-   );
+   if (redis) {
+      await redis.set(
+         cacheKey,
+         JSON.stringify(fees),
+         'EX',
+         KEY_FEES_CACHE_TTL_SECONDS
+      );
+   }
 
    return fees;
 }
 
 export async function invalidateKeyFeesCache(keyId: string): Promise<void> {
-   await getRedis().del(REDIS_KEYS.keyFees(keyId));
+   const redis = getRedis();
+   if (redis) {
+      await redis.del(REDIS_KEYS.keyFees(keyId));
+   }
 }
 
 /**
@@ -75,6 +82,7 @@ export async function invalidateKeyFeesCache(keyId: string): Promise<void> {
  */
 export async function invalidateAllKeyFeesCaches(): Promise<void> {
    const redis = getRedis();
+   if (!redis) return;
    const creators = await prisma.creatorProfile.findMany({
       select: { id: true },
    });

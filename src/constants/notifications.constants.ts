@@ -4,6 +4,8 @@ export const NOTIFICATION_TYPES = {
    TRADE_COMPLETED: 'trade_completed',
    LOCKUP_EXPIRING: 'lockup_expiring',
    PRICE_MOVED: 'price_moved',
+   PAUSE_PROPOSAL_CREATED: 'pause_proposal_created',
+   TRADING_PAUSED: 'trading_paused',
 } as const;
 
 export type NotificationType =

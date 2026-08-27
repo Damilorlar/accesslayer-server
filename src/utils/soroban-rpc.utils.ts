@@ -1,5 +1,5 @@
 import { logger } from './logger.utils';
-import { envConfig } from '../config.schema';
+import { envConfig } from '../config';
 
 /**
  * Soroban RPC client for querying contract state and ledger entries.

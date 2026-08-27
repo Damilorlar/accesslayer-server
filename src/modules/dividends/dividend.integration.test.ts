@@ -1,10 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../../utils/prisma.utils';
 import {
    getDividendDistributions,
    getDividendClaims,
    getDividendDistributionById,
-   creatorExists,
 } from './dividend.service';
 import { processDividendEvents } from '../indexer/dividend-indexer.service';
 import { IndexerChainEvent } from '../../utils/indexer-event-processor.utils';
@@ -25,6 +23,9 @@ describe('Dividend Service Integration Tests', () => {
       const user = await prisma.user.create({
          data: {
             email: `test-${Date.now()}@example.com`,
+            passwordHash: 'hash123',
+            firstName: 'Test',
+            lastName: 'User',
             stellarWallet: { create: { address: 'GBTEST0001' } },
          },
       });
@@ -350,7 +351,7 @@ describe('Dividend Service Integration Tests', () => {
             await processDividendEvents([event]);
          }
 
-         let allDists: typeof result.distributions = [];
+         let allDists: any[] = [];
          let cursor: string | undefined;
          let pageCount = 0;
 

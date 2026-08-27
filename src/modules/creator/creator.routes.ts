@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { httpListCreators, httpGetCreatorStats } from './creators.controllers';
+import { httpListCreators, httpGetCreatorStats } from '../creators/creators.controllers';
 import { cacheControl } from '../../middlewares/cache-control.middleware';
 import { CREATOR_PUBLIC_ROUTE_CACHE_PRESETS } from '../../constants/creator-public-cache.constants';
 import { CREATOR_PUBLIC_ROUTE_NAMES } from '../../constants/creator-public-routes.constants';

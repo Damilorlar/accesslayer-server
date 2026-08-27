@@ -106,7 +106,7 @@ vestingRouter.post(
       // On-chain failure should return 502 before reaching this point.
 
       const newClaimed = claimed + claimable;
-      const updated = await prisma.vestingSchedule.update({
+      await prisma.vestingSchedule.update({
         where: { keyId_wallet: { keyId, wallet } },
         data: { claimedKeys: newClaimed.toString() },
       });

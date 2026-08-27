@@ -1,3 +1,5 @@
+import { httpDistributeDividend } from '../dividends/dividend.controllers';
+import { requireJwtAuth } from '../../middlewares/jwt-auth.middleware';
 import { Router } from 'express';
 import { sendNotFound, sendSuccess } from '../../utils/api-response.utils';
 import {
@@ -16,9 +18,7 @@ import { CREATOR_PUBLIC_ROUTE_NAMES } from '../../constants/creator-public-route
 import { createCreatorReadMetricsMiddleware } from '../../utils/creator-read-metrics.utils';
 import { normalizeTrailingSlash } from '../../middlewares/trailing-slash-normalizer.middleware';
 import { validateCreatorParam } from '../../middlewares/creator-param.middleware';
-import {
-   requireCreatorProfileOwnership,
-} from '../../middlewares/wallet-ownership.middleware';
+import { requireCreatorProfileOwnership } from '../../middlewares/wallet-ownership.middleware';
 import { requireStellarSignature } from '../../middlewares/stellar-signature.middleware';
 import { buyKeyRateLimit } from '../../middlewares/wallet-rate-limit.middleware';
 import { validateBody } from '../../middlewares/validate-body.middleware';
@@ -29,7 +29,13 @@ import {
    postSchema,
 } from '../creator/post.controller';
 import { requireKeyCreator } from '../../middlewares/jwt-auth.middleware';
-import { getCreatorRevenue, KeyNotFoundError as RevenueKeyNotFoundError } from '../creator/creator-revenue.service';
+import {
+   getCreatorRevenue,
+   KeyNotFoundError as RevenueKeyNotFoundError,
+} from '../creator/creator-revenue.service';
+import { httpGetCreatorDashboard } from '../creator/creator-dashboard.controller';
+import { httpCreateCreatorProposal } from '../creator/creator-proposals.controller';
+import { createProposalSchema } from '../creator/creator-proposals.schemas';
 
 const creatorsRouter = Router();
 
@@ -46,6 +52,7 @@ creatorsRouter.post(
    validateBody(buySchema),
    httpBuyCreatorKey
 );
+creatorsRouter.post('/:id/dividends', requireJwtAuth, httpDistributeDividend);
 creatorsRouter.get('/:id/posts', validateCreatorParam('id'), httpListPosts);
 creatorsRouter.post(
    '/:id/posts',
@@ -200,7 +207,9 @@ creatorsRouter.get(
    requireKeyCreator('keyId'),
    async (req, res, next) => {
       try {
-         const keyId = Array.isArray(req.params.keyId) ? req.params.keyId[0] : req.params.keyId;
+         const keyId = Array.isArray(req.params.keyId)
+            ? req.params.keyId[0]
+            : req.params.keyId;
          sendSuccess(res, await getCreatorRevenue(keyId));
       } catch (error) {
          if (error instanceof RevenueKeyNotFoundError) {
@@ -213,6 +222,37 @@ creatorsRouter.get(
 );
 creatorsRouter.all('/:keyId/revenue', (_req, res) => {
    res.set('Allow', 'GET').sendStatus(405);
+});
+
+/**
+ * GET /api/v1/creators/:keyId/dashboard
+ *
+ * Creator dashboard summary: key stats, revenue, and holder metrics in one call.
+ * Requires JWT matching the key creator. Cached in Redis for 2 minutes.
+ */
+creatorsRouter.get(
+   '/:keyId/dashboard',
+   requireKeyCreator('keyId'),
+   httpGetCreatorDashboard
+);
+creatorsRouter.all('/:keyId/dashboard', (_req, res) => {
+   res.set('Allow', 'GET').sendStatus(405);
+});
+
+/**
+ * POST /api/v1/creators/:keyId/proposals
+ *
+ * Proposal creation: submits create_proposal contract call and persists proposal record.
+ * Requires JWT matching the key creator.
+ */
+creatorsRouter.post(
+   '/:keyId/proposals',
+   requireKeyCreator('keyId'),
+   validateBody(createProposalSchema),
+   httpCreateCreatorProposal
+);
+creatorsRouter.all('/:keyId/proposals', (_req, res) => {
+   res.set('Allow', 'POST').sendStatus(405);
 });
 
 export default creatorsRouter;

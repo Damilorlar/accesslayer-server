@@ -213,3 +213,6 @@ export async function disconnectRedis(): Promise<void> {
       globalForRedis.__accesslayerRedis = undefined;
    }
 }
+
+export const getRedis = getRedisClient;
+export const redis = getRedisClient;

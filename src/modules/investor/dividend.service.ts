@@ -12,7 +12,7 @@ export async function getInvestorDividends(
   if (cursor) {
     where.id = { gt: cursor };
   }
-  const items = await prisma.dividend.findMany({
+  const items = await prisma.dividendDistribution.findMany({
     where,
     orderBy: { distributedAt: 'desc' },
     take: limit + 1,

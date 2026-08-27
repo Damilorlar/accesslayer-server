@@ -86,3 +86,22 @@ export function extractBearerToken(authHeader: unknown): string | undefined {
    if (!token || scheme?.toLowerCase() !== 'bearer') return undefined;
    return token.trim() || undefined;
 }
+
+
+
+export function decodeJwt(token: string): any {
+   return jwt.decode(token);
+}
+
+export function signJwt(
+   payload: { sub?: string; wallet?: string } | string,
+   expiresInSeconds: number = envConfig.JWT_ACCESS_TOKEN_TTL_SECONDS
+): string {
+   if (typeof payload === "string") {
+      return signWalletAccessToken(payload, undefined, expiresInSeconds);
+   }
+   const wallet = payload.wallet || payload.sub || "";
+   return signWalletAccessToken(wallet, payload.sub, expiresInSeconds);
+}
+
+export const JwtError = JwtVerifyError;

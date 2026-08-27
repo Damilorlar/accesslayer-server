@@ -1,7 +1,10 @@
 import { prisma } from '../../utils/prisma.utils';
 import { updateIndexedLedger } from './ledger-gap-detection.service';
 import { logger } from '../../utils/logger.utils';
-import { processIndexerChainEvents, IndexerChainEvent } from '../../utils/indexer-event-processor.utils';
+import {
+   processIndexerChainEvents,
+   IndexerChainEvent,
+} from '../../utils/indexer-event-processor.utils';
 import { dedupeChainEvents } from '../../utils/indexer-dedupe.utils';
 
 /**
@@ -26,8 +29,10 @@ export interface DividendDistributedEvent extends IndexerChainEvent {
  * - Creates an Activity record for audit trail.
  * - Writes a checkpoint record of the highest ledger processed.
  */
-export async function processDividendEvents(events: IndexerChainEvent[]): Promise<void> {
-   await processIndexerChainEvents(events, async (event) => {
+export async function processDividendEvents(
+   events: IndexerChainEvent[]
+): Promise<void> {
+   await processIndexerChainEvents(events, async event => {
       // Validate event type
       if (event.eventType !== 'DIVIDEND_DISTRIBUTED') {
          return;
@@ -51,7 +56,10 @@ export async function processDividendEvents(events: IndexerChainEvent[]): Promis
             typedEvent[field as keyof DividendDistributedEvent] === ''
          ) {
             logger.warn(
-               { eventId: `${event.txHash}:${event.eventIndex}`, missingField: field },
+               {
+                  eventId: `${event.txHash}:${event.eventIndex}`,
+                  missingField: field,
+               },
                'Skipping dividend event due to missing required field'
             );
             return;
@@ -108,7 +116,7 @@ export async function processDividendEvents(events: IndexerChainEvent[]): Promis
 
       // 3. Create DividendClaim records for each holder
       if (holders.length > 0) {
-         const claims = holders.map((holder) => {
+         const claims = holders.map(holder => {
             // Calculate holder's payout: perKeyAmount * holderBalance
             const holderBalance =
                typeof holder.balance === 'string'
@@ -160,19 +168,27 @@ export async function processDividendEvents(events: IndexerChainEvent[]): Promis
          },
          'Dividend distribution processed'
       );
+
+      try {
+         const { invalidateCreatorDashboardCache } =
+            await import('../creator/creator-dashboard.service');
+         await invalidateCreatorDashboardCache(creatorId);
+      } catch {
+         // Non-critical cache invalidation failure
+      }
    });
 
    // Update checkpoint with highest ledger processed
    const uniqueEvents = dedupeChainEvents(events);
    const processedLedgers = uniqueEvents
-      .map((e) => e.ledger)
+      .map(e => e.ledger)
       .filter((l): l is number => typeof l === 'number');
 
    if (processedLedgers.length > 0) {
       const maxLedger = Math.max(...processedLedgers);
       // Compute batch hash for deduplication detection
       const identifiers = uniqueEvents
-         .map((e) => `${e.txHash}:${e.eventIndex}`)
+         .map(e => `${e.txHash}:${e.eventIndex}`)
          .sort()
          .join('|');
       const { createHash } = await import('crypto');

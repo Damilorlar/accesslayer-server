@@ -162,38 +162,42 @@ export async function getVolumeLeaderboard(): Promise<
 > {
    const redis = getRedis();
 
-   try {
-      const cached = await withTimeout(
-         redis.get(CACHE_KEY),
-         REDIS_OP_TIMEOUT_MS
-      );
-      if (cached) {
-         return JSON.parse(cached) as VolumeLeaderboardEntry[];
+   if (redis) {
+      try {
+         const cached = await withTimeout(
+            redis.get(CACHE_KEY),
+            REDIS_OP_TIMEOUT_MS
+         );
+         if (cached) {
+            return JSON.parse(cached) as VolumeLeaderboardEntry[];
+         }
+      } catch (error) {
+         logger.warn(
+            { error },
+            'Volume leaderboard cache read failed; computing live'
+         );
       }
-   } catch (error) {
-      logger.warn(
-         { error },
-         'Volume leaderboard cache read failed; computing live'
-      );
    }
 
    const leaderboard = await computeVolumeLeaderboard();
 
-   try {
-      await withTimeout(
-         redis.set(
-            CACHE_KEY,
-            JSON.stringify(leaderboard),
-            'EX',
-            envConfig.LEADERBOARD_VOLUME_CACHE_TTL_SECONDS
-         ),
-         REDIS_OP_TIMEOUT_MS
-      );
-   } catch (error) {
-      logger.warn(
-         { error },
-         'Volume leaderboard cache write failed; serving uncached result'
-      );
+   if (redis) {
+      try {
+         await withTimeout(
+            redis.set(
+               CACHE_KEY,
+               JSON.stringify(leaderboard),
+               'EX',
+               envConfig.LEADERBOARD_VOLUME_CACHE_TTL_SECONDS
+            ),
+            REDIS_OP_TIMEOUT_MS
+         );
+      } catch (error) {
+         logger.warn(
+            { error },
+            'Volume leaderboard cache write failed; serving uncached result'
+         );
+      }
    }
 
    return leaderboard;
@@ -207,11 +211,10 @@ export async function getVolumeLeaderboard(): Promise<
 export async function invalidateVolumeLeaderboardCache(): Promise<void> {
    try {
       const redis = getRedis();
-      await withTimeout(redis.del(CACHE_KEY), REDIS_OP_TIMEOUT_MS);
+      if (redis) {
+         await withTimeout(redis.del(CACHE_KEY), REDIS_OP_TIMEOUT_MS);
+      }
    } catch (error) {
-      logger.warn(
-         { error },
-         'Failed to invalidate volume leaderboard cache'
-      );
+      logger.warn({ error }, 'Failed to invalidate volume leaderboard cache');
    }
 }

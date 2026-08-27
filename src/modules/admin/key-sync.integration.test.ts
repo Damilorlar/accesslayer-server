@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createServer } from '../../utils/server.utils';
 import { prisma } from '../../utils/prisma.utils';
@@ -85,7 +85,7 @@ describe('Key Sync Integration Tests', () => {
       it('should return unchanged sync result when state matches', async () => {
          // Currently returns as-is since on-chain reading is a placeholder
          const result = await syncKeyState(testCreatorId);
-         
+
          expect(result).toBeDefined();
          expect(result.creatorId).toBe(testCreatorId);
          expect(result.success).toBe(true);
@@ -178,8 +178,10 @@ describe('Key Sync Integration Tests', () => {
          });
 
          // If no changes occurred, changedFields should be empty or only include actual changes
-         if (initial?.circulatingSupply === final?.circulatingSupply &&
-               initial?.tradingPaused === final?.tradingPaused) {
+         if (
+            initial?.circulatingSupply === final?.circulatingSupply &&
+            initial?.tradingPaused === final?.tradingPaused
+         ) {
             // No meaningful changes should be reported
             const hasSupplyChange = response.body.data.changedFields.some(
                (f: any) => f.field === 'circulatingSupply'
@@ -187,7 +189,7 @@ describe('Key Sync Integration Tests', () => {
             const hasPausedChange = response.body.data.changedFields.some(
                (f: any) => f.field === 'tradingPaused'
             );
-            
+
             if (!hasSupplyChange) expect(hasSupplyChange).toBe(false);
             if (!hasPausedChange) expect(hasPausedChange).toBe(false);
          }
@@ -234,10 +236,12 @@ describe('Key Sync Integration Tests', () => {
 
          // Verify that only actual changes are in changedFields
          const changedFields = response.body.data.changedFields || [];
-         
+
          changedFields.forEach((change: any) => {
             if (change.field === 'circulatingSupply') {
-               expect(before?.circulatingSupply.toString()).not.toBe(change.newValue);
+               expect(before?.circulatingSupply.toString()).not.toBe(
+                  change.newValue
+               );
             }
             if (change.field === 'tradingPaused') {
                expect(before?.tradingPaused).not.toBe(change.newValue);
@@ -338,7 +342,7 @@ describe('Key Sync Integration Tests', () => {
          ];
 
          const results = await Promise.all(promises);
-         results.forEach((result) => {
+         results.forEach(result => {
             expect(result.status).toBe(200);
          });
       });

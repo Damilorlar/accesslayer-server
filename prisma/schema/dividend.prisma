@@ -4,9 +4,9 @@ model DividendDistribution {
   id                String   @id @default(cuid())
   creatorId         String
   distributionDate  DateTime
-  totalAmountXlm    Decimal  @db.Numeric(20, 7)
+  totalAmountXlm    Decimal  @db.Decimal(20, 7)
   holderCount       Int
-  perKeyAmountXlm   Decimal  @db.Numeric(20, 7)
+  perKeyAmountXlm   Decimal  @db.Decimal(20, 7)
   ledger            Int
   txHash            String
   createdAt         DateTime @default(now())
@@ -22,7 +22,7 @@ model DividendClaim {
   id                String   @id @default(cuid())
   distributionId    String
   recipientAddress  String
-  amountXlm         Decimal  @db.Numeric(20, 7)
+  amountXlm         Decimal  @db.Decimal(20, 7)
   claimedAt         DateTime?
   createdAt         DateTime @default(now())
 

@@ -101,7 +101,7 @@ async function readDatabaseState(
       // Get current price from price snapshot
       const priceSnapshot = await prisma.creatorPriceSnapshot.findUnique({
          where: { creatorId },
-         select: { price: true },
+         select: { currentPrice: true },
       });
 
       // Count unique holders (non-zero balance)
@@ -114,7 +114,7 @@ async function readDatabaseState(
 
       return {
          circulatingSupply: creator.circulatingSupply,
-         currentPrice: priceSnapshot?.price ?? new Decimal(0),
+         currentPrice: priceSnapshot ? new Decimal(priceSnapshot.currentPrice.toString()) : new Decimal(0),
          holderCount,
          tradingPaused: creator.tradingPaused,
       };
@@ -270,11 +270,10 @@ export async function syncKeyState(creatorId: string): Promise<KeySyncResult> {
          if (priceChange) {
             await tx.creatorPriceSnapshot.upsert({
                where: { creatorId },
-               update: { price: onChainState.currentPrice },
+               update: { currentPrice: BigInt(onChainState.currentPrice.toString()) },
                create: {
                   creatorId,
-                  price: onChainState.currentPrice,
-                  priceUpdatedAt: new Date(),
+                  currentPrice: BigInt(onChainState.currentPrice.toString()),
                },
             });
          }

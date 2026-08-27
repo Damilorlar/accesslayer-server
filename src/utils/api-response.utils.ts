@@ -114,7 +114,7 @@ export function sendError(
    message: string,
    details?: Array<{ field?: string; message: string }>
 ): void {
-   res.setHeader('Content-Type', 'application/json');
+   if (typeof res.setHeader === 'function') res.setHeader('Content-Type', 'application/json');
    res.status(statusCode).json(buildErrorResponse(code, message, details));
 }
 
@@ -132,7 +132,7 @@ export function sendSuccess<T>(
       data: serializeBigInt(data) as T,
       ...(message ? { message } : {}),
    };
-   res.setHeader('Content-Type', 'application/json');
+   if (typeof res.setHeader === 'function') res.setHeader('Content-Type', 'application/json');
    res.status(statusCode).json(body);
 }
 
@@ -152,7 +152,7 @@ export function sendPaginatedSuccess<T>(
       meta,
       ...(message ? { message } : {}),
    };
-   res.setHeader('Content-Type', 'application/json');
+   if (typeof res.setHeader === 'function') res.setHeader('Content-Type', 'application/json');
    res.status(statusCode).json(body);
 }
 

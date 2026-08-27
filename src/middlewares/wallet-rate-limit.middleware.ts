@@ -67,6 +67,10 @@ export function walletRateLimit(options: WalletRateLimitOptions) {
       }
 
       const redis = getRedis();
+      if (!redis) {
+         next();
+         return;
+      }
       const key = `${keyPrefix}${walletAddress}`;
       const now = Date.now();
       const windowStart = now - windowMs;

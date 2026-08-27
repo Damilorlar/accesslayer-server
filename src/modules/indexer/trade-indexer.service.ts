@@ -87,5 +87,13 @@ export async function processTradeEvent(
       },
    });
 
+   try {
+      const { invalidateCreatorDashboardCache } =
+         await import('../creator/creator-dashboard.service');
+      await invalidateCreatorDashboardCache(event.creator_id);
+   } catch {
+      // Non-critical cache invalidation failure
+   }
+
    return true;
 }

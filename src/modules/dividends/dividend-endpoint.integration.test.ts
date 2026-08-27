@@ -1,6 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
-import { createServer } from '../../utils/server.utils';
 import { prisma } from '../../utils/prisma.utils';
 import { processDividendEvents } from '../indexer/dividend-indexer.service';
 import { IndexerChainEvent } from '../../utils/indexer-event-processor.utils';
@@ -24,6 +22,9 @@ describe('Dividend Endpoints Integration Tests', () => {
       const user = await prisma.user.create({
          data: {
             email: `test-${Date.now()}@example.com`,
+            passwordHash: 'hash123',
+            firstName: 'Test',
+            lastName: 'User',
             stellarWallet: { create: { address: 'GBTEST0001' } },
          },
       });

@@ -73,3 +73,14 @@ export const DividendClaimsListResponseSchema = z.object({
       nextCursor: z.string().optional(),
    }),
 });
+
+
+export const CreateDividendDistributionSchema = z.object({
+   totalAmount: z
+      .number({ required_error: "totalAmount is required" })
+      .positive("totalAmount must be a positive integer"),
+});
+
+export type CreateDividendDistributionInput = z.infer<
+   typeof CreateDividendDistributionSchema
+>;

@@ -19,3 +19,34 @@ model GovernanceProposal {
   @@index([keyId, status])
   @@index([keyId, expiresAt])
 }
+
+model PauseProposal {
+  id              String    @id @default(cuid())
+  proposalId      String    @unique
+  keyId           String
+  proposerWallet  String
+  approverWallet  String?
+  txHash          String?
+  status          String    @default("pending") // pending | executed | rejected | cancelled
+  createdAt       DateTime  @default(now())
+  executedAt      DateTime?
+
+  @@index([keyId, status])
+  @@index([proposerWallet])
+  @@map("pause_proposals")
+}
+
+model TimelockProposal {
+  id                 String    @id @default(cuid())
+  proposalId         String    @unique
+  changeType         String
+  payload            Json
+  executionNotBefore DateTime
+  status             String    @default("pending") // pending | executed | cancelled
+  createdAt          DateTime  @default(now())
+  executedAt         DateTime?
+
+  @@index([status])
+  @@map("timelock_proposals")
+}
+

@@ -4,7 +4,6 @@ import {
    sendValidationError,
    sendNotFound,
 } from '../../utils/api-response.utils';
-import { Response } from 'express';
 import {
    GetWhitelistStatusQuery,
    GetWhitelistStatusQuerySchema,
@@ -54,9 +53,7 @@ export const httpGetWhitelistStatus: AsyncController = async (
       // Verify creator exists
       const exists = await creatorExists(creatorId);
       if (!exists) {
-         return sendNotFound(res, 'Creator not found', [
-            { field: 'keyId', message: 'The specified key ID does not exist' },
-         ]);
+         return sendNotFound(res, 'Creator');
       }
 
       // Get whitelist status with caching

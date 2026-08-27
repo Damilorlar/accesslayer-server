@@ -85,6 +85,10 @@ export const envSchema = z
       ENABLE_SCHEMA_VERSION_HEADER: booleanCoerce.default(true),
       ENABLE_REQUEST_LOGGING: booleanCoerce.default(true),
       DB_QUERY_TIMEOUT_MS: z.coerce.number().default(5000),
+      DB_POOL_WAIT_WARN_MS: z.coerce.number().int().positive().default(2000),
+      DB_POOL_WAIT_ERROR_MS: z.coerce.number().int().positive().default(5000),
+      WEBHOOK_MAX_PER_CREATOR: z.coerce.number().int().positive().default(5),
+      WEBHOOK_RETRY_MAX_ATTEMPTS: z.coerce.number().int().positive().default(3),
 
       APP_SECRET: z
          .string()
@@ -109,6 +113,18 @@ export const envSchema = z
 
       // Key trade lockup
       LOCKUP_DURATION_SECONDS: z.coerce.number().int().nonnegative().default(0),
+
+      // Leaderboard volume
+      LEADERBOARD_VOLUME_WINDOW_DAYS: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(7),
+      LEADERBOARD_VOLUME_CACHE_TTL_SECONDS: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(300),
 
       INDEXER_JITTER_FACTOR: z.coerce.number().min(0).max(1).default(0.1),
       BACKGROUND_JOB_LOCK_TTL_MS: z.coerce
@@ -205,6 +221,25 @@ export const envSchema = z
       // `X-Trace-Id` header honored instead of a freshly generated one.
       // Left unset by default, so no caller is trusted unless configured.
       TRACE_ID_TRUSTED_TOKEN: optionalNonEmptyString,
+      INTERNAL_SERVICE_KEY: optionalNonEmptyString,
+      HORIZON_WEBHOOK_SECRET: optionalNonEmptyString,
+      WEBHOOK_RETRY_BASE_DELAY_MS: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(1000),
+      SSE_HEARTBEAT_INTERVAL_MS: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(15000),
+      SSE_QUEUE_CAPACITY: z.coerce.number().int().positive().default(1000),
+      SSE_QUEUE_FULL_TIMEOUT_MS: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(5000),
+      SSE_REPLAY_MAX_EVENTS: z.coerce.number().int().positive().default(100),
    })
    .superRefine((data, ctx) => {
       if (data.MODE === 'production' && data.STELLAR_NETWORK === 'testnet') {
