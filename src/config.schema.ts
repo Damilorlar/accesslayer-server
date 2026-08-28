@@ -153,6 +153,10 @@ export const envSchema = z
       ENABLE_INDEXER_DLQ: booleanCoerce.default(true),
       ENABLE_INDEXER_CURSOR_STALENESS_WARNING: booleanCoerce.default(true),
 
+      // Stellar auth — optional server keypair secret used for SEP-10 challenge
+      // signing. When absent the server falls back to an ephemeral random keypair.
+      STELLAR_AUTH_SECRET: optionalNonEmptyString,
+
       // Stellar network
       STELLAR_NETWORK: z
          .enum(['testnet', 'mainnet'], {
