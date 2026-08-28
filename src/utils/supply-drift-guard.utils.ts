@@ -1,4 +1,4 @@
-import { getRedis } from './redis.utils';
+import { getRequiredRedisClient } from './redis.utils';
 import { logger } from './logger.utils';
 
 export class SupplyDriftHaltedError extends Error {
@@ -15,7 +15,7 @@ function driftKey(creatorWallet: string): string {
 }
 
 export async function isDriftHalted(creatorWallet: string): Promise<boolean> {
-   const redis = getRedis();
+   const redis = getRequiredRedisClient();
    const exists = await redis.exists(driftKey(creatorWallet));
    return exists === 1;
 }
@@ -45,7 +45,7 @@ export async function verifySupplyAndGuard(
          'Supply drift detected! Operations halted for creator until cleared.'
       );
 
-      const redis = getRedis();
+      const redis = getRequiredRedisClient();
       await redis.set(driftKey(creatorWallet), '1');
       return false;
    }
@@ -54,7 +54,7 @@ export async function verifySupplyAndGuard(
 }
 
 export async function clearDrift(creatorWallet: string): Promise<void> {
-   const redis = getRedis();
+   const redis = getRequiredRedisClient();
    await redis.del(driftKey(creatorWallet));
    logger.info(
       { creator_wallet: creatorWallet },

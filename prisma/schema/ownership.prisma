@@ -15,7 +15,12 @@ model KeyOwnership {
 
   /// When the current lockup window ends for this holding, if any.
   lockupExpiresAt DateTime?
-  
+
+  /// Timestamp of the most recent buy into this position — distinct from
+  /// `updatedAt`, which also changes on sells/other updates. Drives the
+  /// per-buy lockup window in src/modules/users/holdings.service.ts.
+  lastBuyAt     DateTime?
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

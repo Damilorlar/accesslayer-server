@@ -1,4 +1,4 @@
-import { getRedis } from './redis.utils';
+import { getRequiredRedisClient } from './redis.utils';
 import { logger } from './logger.utils';
 
 const LOCK_TTL_SECONDS = 15;
@@ -22,7 +22,7 @@ function lockKey(creatorWallet: string): string {
 export async function acquireSequencerLock(
    creatorWallet: string
 ): Promise<{ release: () => Promise<void> }> {
-   const redis = getRedis();
+   const redis = getRequiredRedisClient();
    const key = lockKey(creatorWallet);
    const lockValue = `${process.pid}:${Date.now()}`;
    const deadline = Date.now() + LOCK_ACQUIRE_TIMEOUT_MS;

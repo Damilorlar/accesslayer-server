@@ -258,6 +258,37 @@ export const envSchema = z
          .positive()
          .default(5000),
       SSE_REPLAY_MAX_EVENTS: z.coerce.number().int().positive().default(100),
+
+      // SSE subscription management (src/modules/subscriptions) — a wallet's
+      // subscription set, persisted in Redis, distinct from the per-connection
+      // heartbeat/queue/replay tuning above.
+      SSE_SUBSCRIPTION_TTL_MS: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(3_600_000),
+      SSE_MAX_SUBSCRIPTIONS_PER_WALLET: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(20),
+      SSE_MAX_CONNECTIONS_PER_WALLET: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(5),
+      SSE_THROTTLE_DURATION_MS: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(30_000),
+
+      // Stellar challenge-response auth (src/modules/auth/stellar-challenge.controller.ts).
+      // The server's own signing keypair for issued challenges. Left unset by
+      // default (a fresh random keypair is used each boot, matching the
+      // existing fallback), since it only needs to be stable across restarts
+      // in production.
+      STELLAR_AUTH_SECRET: optionalNonEmptyString,
    })
    .superRefine((data, ctx) => {
       if (data.MODE === 'production' && data.STELLAR_NETWORK === 'testnet') {

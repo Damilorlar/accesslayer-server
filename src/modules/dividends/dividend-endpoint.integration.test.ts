@@ -1,16 +1,14 @@
 import request from 'supertest';
+import app from '../../app';
 import { prisma } from '../../utils/prisma.utils';
 import { processDividendEvents } from '../indexer/dividend-indexer.service';
 import { IndexerChainEvent } from '../../utils/indexer-event-processor.utils';
 
 describe('Dividend Endpoints Integration Tests', () => {
-   let app: any;
    let testCreatorId: string;
    let testDistributionId: string;
 
    beforeAll(async () => {
-      app = await createServer();
-
       // Clean up
       await prisma.dividendClaim.deleteMany({});
       await prisma.dividendDistribution.deleteMany({});
@@ -234,6 +232,9 @@ describe('Dividend Endpoints Integration Tests', () => {
          const user = await prisma.user.create({
             data: {
                email: `test2-${Date.now()}@example.com`,
+               passwordHash: 'hash123',
+               firstName: 'Test',
+               lastName: 'User2',
                stellarWallet: { create: { address: 'GBTEST0002' } },
             },
          });

@@ -1,6 +1,6 @@
 // src/modules/notifications/notification.service.ts
 import { prisma } from '../../utils/prisma.utils';
-import { getRedis } from '../../utils/redis.utils';
+import { getRequiredRedisClient } from '../../utils/redis.utils';
 import {
    LOCKUP_WARNING_WINDOW_MS,
    NOTIFICATION_TYPES,
@@ -13,7 +13,7 @@ import {
 import { NotificationItem } from './notification.types';
 
 async function getLastReadAt(walletAddress: string): Promise<Date | null> {
-   const raw = await getRedis().get(
+   const raw = await getRequiredRedisClient().get(
       REDIS_KEYS.notificationsReadAt(walletAddress)
    );
    if (!raw) {
@@ -182,7 +182,7 @@ export async function markAllNotificationsRead(
    walletAddress: string,
    now: Date = new Date()
 ): Promise<void> {
-   await getRedis().set(
+   await getRequiredRedisClient().set(
       REDIS_KEYS.notificationsReadAt(walletAddress),
       now.toISOString()
    );

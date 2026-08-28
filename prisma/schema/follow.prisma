@@ -1,5 +1,21 @@
 // prisma/schema/follow.prisma
 
+/// Matches the already-applied `wallet_creator_follows` table (migration
+/// 20260825000000_add_wallet_creator_follows) — the model declaration was
+/// missing from the schema even though the table exists, so `prisma.walletCreatorFollow`
+/// never worked. See src/modules/wallets/wallet-following.service.ts.
+model WalletCreatorFollow {
+  id              String   @id @default(cuid())
+  walletAddress   String
+  creatorId       String
+  createdAt       DateTime @default(now())
+
+  @@unique([walletAddress, creatorId])
+  @@index([walletAddress])
+  @@index([creatorId])
+  @@map("wallet_creator_follows")
+}
+
 model Follow {
   id              String   @id @default(cuid())
   followerAddress String

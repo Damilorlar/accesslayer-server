@@ -214,5 +214,31 @@ export async function disconnectRedis(): Promise<void> {
    }
 }
 
+/**
+ * Eagerly create (and, since `lazyConnect` is false, begin connecting) the
+ * shared client. Called once at startup so `getRedisClient()`/callers below
+ * don't pay first-request connection latency.
+ */
+export async function connectRedis(): Promise<void> {
+   getRedisClient();
+}
+
+/**
+ * For subsystems where Redis isn't an optional cache but a hard
+ * dependency (SSE subscriptions, sequencer locks, supply-drift guards,
+ * key price-moved pub/sub) — throws instead of silently degrading, since
+ * a `null` client there would mean silently no-opping locking/notification
+ * logic rather than a safe cache miss.
+ */
+export function getRequiredRedisClient(): Redis {
+   const client = getRedisClient();
+   if (!client) {
+      throw Object.assign(new Error('Redis is required but unavailable (ENABLE_REDIS_CACHE is false or the client failed to initialise)'), {
+         code: 'redis_unavailable',
+      });
+   }
+   return client;
+}
+
 export const getRedis = getRedisClient;
 export const redis = getRedisClient;

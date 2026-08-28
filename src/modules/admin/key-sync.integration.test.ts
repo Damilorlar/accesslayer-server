@@ -1,18 +1,14 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
-import { createServer } from '../../utils/server.utils';
+import app from '../../app';
 import { prisma } from '../../utils/prisma.utils';
 import { signWalletAccessToken } from '../../utils/jwt.utils';
 import { syncKeyState, creatorExists } from './key-sync.service';
 
 describe('Key Sync Integration Tests', () => {
-   let app: any;
    let adminToken: string;
    let testCreatorId: string;
 
    beforeAll(async () => {
-      app = await createServer();
-
       // Create admin token
       const adminWallet = '0xadmintestwallet1111111111111111111111111';
       adminToken = signWalletAccessToken(adminWallet, 'admin-sub', 3600);
@@ -27,6 +23,9 @@ describe('Key Sync Integration Tests', () => {
       const user = await prisma.user.create({
          data: {
             email: `test-${Date.now()}@example.com`,
+            passwordHash: 'hash',
+            firstName: 'Key',
+            lastName: 'Sync',
             stellarWallet: { create: { address: 'GBTEST0001' } },
          },
       });
@@ -46,9 +45,8 @@ describe('Key Sync Integration Tests', () => {
       // Create price snapshot
       await prisma.creatorPriceSnapshot.create({
          data: {
-            creatorId,
-            price: 100,
-            priceUpdatedAt: new Date(),
+            creatorId: testCreatorId,
+            currentPrice: 100,
          },
       });
 
@@ -57,7 +55,7 @@ describe('Key Sync Integration Tests', () => {
          await prisma.keyOwnership.create({
             data: {
                ownerAddress: `GHOLDER${String(i).padStart(52, '0')}`,
-               creatorId,
+               creatorId: testCreatorId,
                balance: 100,
             },
          });
