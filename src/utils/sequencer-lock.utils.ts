@@ -23,6 +23,11 @@ export async function acquireSequencerLock(
    creatorWallet: string
 ): Promise<{ release: () => Promise<void> }> {
    const redis = getRedis();
+   if (!redis) {
+      throw new SequencerContentionError(
+         `Cannot acquire sequencer lock for ${creatorWallet}: Redis is not available`
+      );
+   }
    const key = lockKey(creatorWallet);
    const lockValue = `${process.pid}:${Date.now()}`;
    const deadline = Date.now() + LOCK_ACQUIRE_TIMEOUT_MS;

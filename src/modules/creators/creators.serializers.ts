@@ -218,8 +218,8 @@ export async function serializeCreatorListResponse(
    profiles: CreatorProfile[],
    meta: OffsetPaginationMeta,
    options: { search?: string } = {}
-): CreatorListResponse {
-   const items = serializeCreatorList(profiles);
+): Promise<CreatorListResponse> {
+   const items = await serializeCreatorList(profiles);
 
    let state: CreatorListState;
    let message: string | undefined;

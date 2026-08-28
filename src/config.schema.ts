@@ -106,6 +106,7 @@ export const envSchema = z
          .int()
          .positive()
          .default(900),
+      JWT_EXPIRES_IN: z.string().default('1h'),
 
       // Redis cache
       REDIS_URL: z.string().default('redis://localhost:6379'),
@@ -172,6 +173,10 @@ export const envSchema = z
             'STELLAR_SOROBAN_RPC_URL must be a valid URL (e.g. https://soroban-testnet.stellar.org)'
          )
          .default('https://soroban-testnet.stellar.org'),
+      STELLAR_AUTH_SECRET: z
+         .string()
+         .min(32, 'STELLAR_AUTH_SECRET should be at least 32 characters')
+         .default('accesslayer_default_development_stellar_auth_secret_32b'),
 
       // Ownership snapshot cleanup job
       OWNERSHIP_SNAPSHOT_TABLE_NAME: z
@@ -240,6 +245,26 @@ export const envSchema = z
          .positive()
          .default(5000),
       SSE_REPLAY_MAX_EVENTS: z.coerce.number().int().positive().default(100),
+      SSE_MAX_CONNECTIONS_PER_WALLET: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(5),
+      SSE_MAX_SUBSCRIPTIONS_PER_WALLET: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(10),
+      SSE_SUBSCRIPTION_TTL_MS: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(300000),
+      SSE_THROTTLE_DURATION_MS: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(1000),
    })
    .superRefine((data, ctx) => {
       if (data.MODE === 'production' && data.STELLAR_NETWORK === 'testnet') {

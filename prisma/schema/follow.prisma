@@ -12,3 +12,14 @@ model Follow {
   @@index([creatorId])
   @@index([followerAddress])
 }
+
+model WalletCreatorFollow {
+  id            String   @id @default(cuid())
+  walletAddress String
+  creatorId     String
+  createdAt     DateTime @default(now())
+
+  @@unique([walletAddress, creatorId])
+  @@index([walletAddress])
+  @@index([creatorId])
+}
