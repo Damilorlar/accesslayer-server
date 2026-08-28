@@ -14,6 +14,8 @@ import {
    PRICE_HISTORY_INTERVALS,
 } from './key-price-history.service';
 import { getKeyFees, KeyNotFoundError } from './key-fees.service';
+import { getKeyProposals } from './key-proposals.service';
+import { getKeySupply } from './key-supply.service';
 import { KeySearchQueryTooShortError, searchKeys } from './key-search.service';
 import { KEY_SEARCH_MIN_QUERY_LENGTH } from '../../constants/notifications.constants';
 import dividendRouter from '../dividends/dividend.routes';
@@ -118,7 +120,7 @@ router.get('/:keyId/proposals', async (req, res, next) => {
          await getKeyProposals(req.params.keyId, parsed.data.status)
       );
    } catch (error) {
-      if (error instanceof ProposalKeyNotFoundError) {
+      if (error instanceof KeyNotFoundError) {
          sendNotFound(res, 'Key');
          return;
       }
@@ -134,7 +136,7 @@ router.get('/:keyId/supply', async (req, res, next) => {
    try {
       sendSuccess(res, await getKeySupply(req.params.keyId));
    } catch (error) {
-      if (error instanceof SupplyKeyNotFoundError) {
+      if (error instanceof KeyNotFoundError) {
          sendNotFound(res, 'Key');
          return;
       }

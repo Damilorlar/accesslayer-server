@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createServer } from '../../utils/server.utils';
 import { prisma } from '../../utils/prisma.utils';
@@ -27,6 +26,9 @@ describe('Key Sync Integration Tests', () => {
       const user = await prisma.user.create({
          data: {
             email: `test-${Date.now()}@example.com`,
+            passwordHash: 'test-hash',
+            firstName: 'Test',
+            lastName: 'User',
             stellarWallet: { create: { address: 'GBTEST0001' } },
          },
       });
@@ -46,9 +48,9 @@ describe('Key Sync Integration Tests', () => {
       // Create price snapshot
       await prisma.creatorPriceSnapshot.create({
          data: {
-            creatorId,
-            price: 100,
-            priceUpdatedAt: new Date(),
+            creatorId: creator.id,
+            currentPrice: 100,
+            lastTradeAt: new Date(),
          },
       });
 
@@ -57,7 +59,7 @@ describe('Key Sync Integration Tests', () => {
          await prisma.keyOwnership.create({
             data: {
                ownerAddress: `GHOLDER${String(i).padStart(52, '0')}`,
-               creatorId,
+               creatorId: creator.id,
                balance: 100,
             },
          });

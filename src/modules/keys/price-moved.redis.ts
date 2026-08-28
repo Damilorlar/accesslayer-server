@@ -8,6 +8,7 @@ import {
 
 export async function writePriceMovedKeys(keyIds: string[]): Promise<void> {
    const redis = getRedis();
+   if (!redis) return;
    const pipeline = redis.pipeline();
    pipeline.del(REDIS_KEYS.priceMovedSet);
    if (keyIds.length > 0) {
@@ -18,7 +19,9 @@ export async function writePriceMovedKeys(keyIds: string[]): Promise<void> {
 }
 
 export async function getPriceMovedKeyIds(): Promise<string[]> {
-   return getRedis().smembers(REDIS_KEYS.priceMovedSet);
+   const redis = getRedis();
+   if (!redis) return [];
+   return redis.smembers(REDIS_KEYS.priceMovedSet);
 }
 
 export async function markPriceMovedDelivered(
@@ -26,6 +29,7 @@ export async function markPriceMovedDelivered(
    walletAddress: string
 ): Promise<void> {
    const redis = getRedis();
+   if (!redis) return;
    const deliveredKey = REDIS_KEYS.priceMovedDelivered(keyId);
    await redis.sadd(deliveredKey, walletAddress);
    await redis.expire(deliveredKey, PRICE_MOVED_SET_TTL_SECONDS);

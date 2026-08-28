@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import request from 'supertest';
 import { createServer } from '../../utils/server.utils';
 import { prisma } from '../../utils/prisma.utils';
@@ -21,6 +20,9 @@ describe('Whitelist Endpoint Integration Tests', () => {
       const user = await prisma.user.create({
          data: {
             email: `test-${Date.now()}@example.com`,
+            passwordHash: 'test-hash',
+            firstName: 'Test',
+            lastName: 'User',
             stellarWallet: { create: { address: 'GBTEST0001' } },
          },
       });
@@ -239,8 +241,8 @@ describe('Whitelist Endpoint Integration Tests', () => {
          // Note: This test requires Redis to be available
          // We spy on the caching functions to verify they're called
 
-         const cacheGetSpy = vi.spyOn(cacheUtils, 'cacheGetJson');
-         const cacheSetSpy = vi.spyOn(cacheUtils, 'cacheSetJson');
+          const cacheGetSpy = jest.spyOn(cacheUtils, 'cacheGetJson');
+          const cacheSetSpy = jest.spyOn(cacheUtils, 'cacheSetJson');
 
          // First request should miss cache and populate it
          const response1 = await request(app)

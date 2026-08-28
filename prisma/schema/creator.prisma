@@ -32,6 +32,7 @@ model CreatorProfile {
   pendingPurchases PendingKeyPurchase[]
   posts            CreatorPost[]
   followers        Follow[]
+  walletFollowers   WalletCreatorFollow[]
 }
 model PendingKeyPurchase {
   id             String   @id @default(cuid())

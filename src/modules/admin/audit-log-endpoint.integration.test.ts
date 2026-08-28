@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createServer } from '../../utils/server.utils';
 import { prisma } from '../../utils/prisma.utils';
