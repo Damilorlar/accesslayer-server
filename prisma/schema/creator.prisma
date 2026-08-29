@@ -19,6 +19,8 @@ model CreatorProfile {
   creatorRoyaltyBuyBps  Int @default(0)
   /// Creator royalty charged on sells, in basis points (100 = 1%).
   creatorRoyaltySellBps Int @default(0)
+  /// Maximum percentage of total supply a single wallet can hold in basis points (default 2500 = 25%).
+  holderCapBps          Int @default(2500) @map("holder_cap_bps")
   /// Circuit breaker price movement threshold in basis points (default 3000 = 30%).
   circuitBreakerThreshold Int @default(3000) @map("circuit_breaker_threshold")
   perks             Json?
