@@ -46,6 +46,7 @@ export const envSchema = z
       DATABASE_URL: z
          .string()
          .min(1, 'DATABASE_URL is required in the environment variables'),
+      NODE_ID: z.string().default('node-local'),
 
       GMAIL_USER: z.string(),
       GMAIL_APP_PASSWORD: z.string(),
