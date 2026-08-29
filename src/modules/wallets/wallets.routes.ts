@@ -1,9 +1,11 @@
 import { Router } from "express";
 import { httpGetWalletActivity } from "./wallet-activity.controllers";
 import { httpGetWalletHoldings } from "./wallet-holdings.controllers";
+import { httpGetWalletFollowing } from "./wallet-following.controllers";
 import { cacheControl } from "../../middlewares/cache-control.middleware";
 import { ACTIVITY_FEED_CACHE_PRESET } from "../../constants/activity-feed-cache.constants";
 import { requireWalletParamMatch } from "../../middlewares/jwt-auth.middleware";
+import { jwtAuth } from "../../middlewares/jwt.middleware";
 
 const walletsRouter = Router();
 

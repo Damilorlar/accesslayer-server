@@ -36,6 +36,8 @@ describe('getCreatorProfile', () => {
          updatedAt: null,
          perks: [],
          links: [],
+         tradingPaused: false,
+
          currentPrice: null,
          price24hAgo: null,
          priceChange24h: null,
@@ -44,6 +46,43 @@ describe('getCreatorProfile', () => {
             isProfileComplete: false,
          },
       });
+   });
+
+   it('surfaces tradingPaused from the persisted creator profile', async () => {
+      findFirstMock.mockResolvedValue({
+         id: 'creator-2',
+         displayName: 'Paused Creator',
+         bio: 'bio',
+         avatarUrl: null,
+         perks: [],
+         isVerified: false,
+         tradingPaused: true,
+         createdAt: new Date('2024-01-01T00:00:00.000Z'),
+         updatedAt: new Date('2024-01-02T00:00:00.000Z'),
+         priceSnapshot: null,
+      });
+
+      const result = await getCreatorProfile('creator-2');
+
+      expect(result.tradingPaused).toBe(true);
+   });
+
+   it('defaults tradingPaused to false when the profile omits it', async () => {
+      findFirstMock.mockResolvedValue({
+         id: 'creator-3',
+         displayName: 'Active Creator',
+         bio: 'bio',
+         avatarUrl: null,
+         perks: [],
+         isVerified: false,
+         createdAt: new Date('2024-01-01T00:00:00.000Z'),
+         updatedAt: new Date('2024-01-02T00:00:00.000Z'),
+         priceSnapshot: null,
+      });
+
+      const result = await getCreatorProfile('creator-3');
+
+      expect(result.tradingPaused).toBe(false);
    });
 
    it('echoes the creator id verbatim so callers can correlate the response', async () => {

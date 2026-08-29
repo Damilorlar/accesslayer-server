@@ -1,16 +1,16 @@
 // prisma/schema/creator.prisma
 
 model CreatorProfile {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  handle          String   @unique
-  displayName     String
-  bio             String?
-  avatarUrl       String?
-  perkSummary     String?
-  isVerified      Boolean  @default(false)
-  tradingPaused   Boolean  @default(false)
-  circulatingSupply Decimal @default(0)
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  handle            String   @unique
+  displayName       String
+  bio               String?
+  avatarUrl         String?
+  perkSummary       String?
+  isVerified        Boolean  @default(false)
+  tradingPaused     Boolean  @default(false)
+  circulatingSupply Decimal  @default(0)
   /// Maximum number of keys that can exist (null = uncapped).
   supplyCap         Int?
   /// Number of keys that have been burned.
@@ -21,19 +21,19 @@ model CreatorProfile {
   creatorRoyaltySellBps Int @default(0)
   /// Circuit breaker price movement threshold in basis points (default 3000 = 30%).
   circuitBreakerThreshold Int @default(3000) @map("circuit_breaker_threshold")
-  perks           Json?
-  followersCount  Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  perks             Json?
+  followersCount    Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  priceSnapshot  CreatorPriceSnapshot?
-  priceHistory   CreatorPriceHistory[]
+  user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  priceSnapshot    CreatorPriceSnapshot?
+  priceHistory     CreatorPriceHistory[]
   pendingPurchases PendingKeyPurchase[]
-  posts          CreatorPost[]
-  followers      Follow[]
+  posts            CreatorPost[]
+  followers        Follow[]
+  walletFollowers   WalletCreatorFollow[]
 }
-
 model PendingKeyPurchase {
   id             String   @id @default(cuid())
   creatorId      String

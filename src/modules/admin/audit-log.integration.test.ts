@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../../utils/prisma.utils';
 import { createAuditEntry, getAuditLogs } from './audit-log.service';
 
