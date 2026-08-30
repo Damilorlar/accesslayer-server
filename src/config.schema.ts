@@ -176,12 +176,11 @@ export const envSchema = z
          .url(
             'STELLAR_SOROBAN_RPC_URL must be a valid URL (e.g. https://soroban-testnet.stellar.org)'
          )
-         .default('https://soroban-testnet.stellar.org'),
-         .string()
-         .min(32, 'STELLAR_AUTH_SECRET should be at least 32 characters')
-         .default('accesslayer_default_development_stellar_auth_secret_32b'),
+.default('https://soroban-testnet.stellar.org'),
 
-      // Ownership snapshot cleanup job
+   STELLAR_AUTH_SECRET: z.string().min(32).default('accesslayer_default_development_stellar_auth_secret_32b'),
+
+       // Ownership snapshot cleanup job
       OWNERSHIP_SNAPSHOT_TABLE_NAME: z
          .string()
          .min(1)
