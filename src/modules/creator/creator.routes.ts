@@ -74,9 +74,10 @@ creatorsRouter.post(
             'capBps must be between 100 and 2500'
          );
          return;
-      }
+      }         const keyId = Array.isArray(req.params.keyId)
+            ? req.params.keyId[0]
+            : req.params.keyId;
 
-      const keyId = req.params.keyId;
       try {
          const creatorProfile = await prisma.creatorProfile.findFirst({
             where: { OR: [{ id: keyId }, { handle: keyId }] },
