@@ -157,7 +157,6 @@ export const envSchema = z
 
       // Stellar auth — optional server keypair secret used for SEP-10 challenge
       // signing. When absent the server falls back to an ephemeral random keypair.
-      STELLAR_AUTH_SECRET: optionalNonEmptyString,
 
       // Stellar network
       STELLAR_NETWORK: z
@@ -178,7 +177,6 @@ export const envSchema = z
             'STELLAR_SOROBAN_RPC_URL must be a valid URL (e.g. https://soroban-testnet.stellar.org)'
          )
          .default('https://soroban-testnet.stellar.org'),
-      STELLAR_AUTH_SECRET: z
          .string()
          .min(32, 'STELLAR_AUTH_SECRET should be at least 32 characters')
          .default('accesslayer_default_development_stellar_auth_secret_32b'),
@@ -278,7 +276,6 @@ export const envSchema = z
          .positive()
          .default(1000),
       // Stellar auth challenge signing secret
-      STELLAR_AUTH_SECRET: optionalNonEmptyString,
 
    })
    .superRefine((data, ctx) => {
