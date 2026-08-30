@@ -54,7 +54,6 @@ describe('Key Sync Integration Tests', () => {
             creatorId: testCreatorId,
             currentPrice: 100n,
 
-            currentPrice: 100,
 
             lastTradeAt: new Date(),
          },
