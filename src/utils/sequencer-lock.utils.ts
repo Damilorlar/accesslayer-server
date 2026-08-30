@@ -25,13 +25,6 @@ export async function acquireSequencerLock(
    const redis = getRedis();
 
    if (!redis) {
-      throw new SequencerContentionError(
-         `Cannot acquire sequencer lock for ${creatorWallet}: Redis is not available`
-      );
-   }
-=======
-
-   if (!redis) {
       // Redis caching is disabled: degrade to a no-op lock so single-instance
       // operation continues without distributed coordination.
       return { release: async () => {} };

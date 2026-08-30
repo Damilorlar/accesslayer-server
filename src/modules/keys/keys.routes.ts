@@ -15,9 +15,6 @@ import {
 } from './key-price-history.service';
 import { getKeyFees, KeyNotFoundError } from './key-fees.service';
 
-import { getKeyProposals, KeyNotFoundError as ProposalKeyNotFoundError } from './key-proposals.service';
-import { getKeySupply, KeyNotFoundError as SupplyKeyNotFoundError } from './key-supply.service';
-
 import { getKeyProposals } from './key-proposals.service';
 import { getKeySupply } from './key-supply.service';
 
