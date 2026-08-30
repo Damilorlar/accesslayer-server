@@ -46,6 +46,7 @@ export const envSchema = z
       DATABASE_URL: z
          .string()
          .min(1, 'DATABASE_URL is required in the environment variables'),
+      NODE_ID: z.string().default('node-local'),
 
       GMAIL_USER: z.string(),
       GMAIL_APP_PASSWORD: z.string(),
@@ -101,6 +102,7 @@ export const envSchema = z
          .min(32, 'JWT_SECRET should be at least 32 characters')
          .default('accesslayer_default_development_jwt_secret_key_32_bytes'),
       JWT_ISSUER: z.string().default('accesslayer-server'),
+      JWT_EXPIRES_IN: z.string().default('15m'),
       JWT_ACCESS_TOKEN_TTL_SECONDS: z.coerce
          .number()
          .int()
@@ -153,6 +155,10 @@ export const envSchema = z
       ENABLE_INDEXER_DEDUPE: booleanCoerce.default(true),
       ENABLE_INDEXER_DLQ: booleanCoerce.default(true),
       ENABLE_INDEXER_CURSOR_STALENESS_WARNING: booleanCoerce.default(true),
+
+      // Stellar auth — optional server keypair secret used for SEP-10 challenge
+      // signing. When absent the server falls back to an ephemeral random keypair.
+      STELLAR_AUTH_SECRET: optionalNonEmptyString,
 
       // Stellar network
       STELLAR_NETWORK: z
@@ -245,26 +251,42 @@ export const envSchema = z
          .positive()
          .default(5000),
       SSE_REPLAY_MAX_EVENTS: z.coerce.number().int().positive().default(100),
+
+
+      // Server-Sent Events (SSE) subscription limits
+
       SSE_MAX_CONNECTIONS_PER_WALLET: z.coerce
          .number()
          .int()
          .positive()
+
          .default(5),
       SSE_MAX_SUBSCRIPTIONS_PER_WALLET: z.coerce
          .number()
          .int()
          .positive()
+
          .default(10),
       SSE_SUBSCRIPTION_TTL_MS: z.coerce
          .number()
          .int()
          .positive()
          .default(300000),
+
+      SSE_MAX_SUBSCRIPTIONS_PER_WALLET: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(10),
+
       SSE_THROTTLE_DURATION_MS: z.coerce
          .number()
          .int()
          .positive()
          .default(1000),
+      // Stellar auth challenge signing secret
+      STELLAR_AUTH_SECRET: optionalNonEmptyString,
+
    })
    .superRefine((data, ctx) => {
       if (data.MODE === 'production' && data.STELLAR_NETWORK === 'testnet') {

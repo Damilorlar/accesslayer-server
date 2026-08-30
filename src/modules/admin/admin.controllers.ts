@@ -18,6 +18,7 @@ import { updateProtocolFeeBps } from '../keys/key-fees.service';
 
 const UpdateCreatorMetadataSchema = z.object({
    isVerified: z.boolean().optional(),
+   tradingPaused: z.boolean().optional(),
 });
 
 type UpdateCreatorMetadataInput = z.infer<typeof UpdateCreatorMetadataSchema>;
@@ -76,6 +77,7 @@ export const httpUpdateCreatorMetadata: AsyncController = async (
 
       const previousValues = {
          isVerified: creator.isVerified,
+         tradingPaused: creator.tradingPaused,
       };
 
       const updated = await prisma.creatorProfile.update({
@@ -94,9 +96,15 @@ export const httpUpdateCreatorMetadata: AsyncController = async (
       });
 
       if (Object.keys(changes).length > 0) {
+         const action =
+            'tradingPaused' in changes
+               ? changes.tradingPaused && (changes.tradingPaused as any).after === true
+                  ? 'pause_creator_trading'
+                  : 'resume_creator_trading'
+               : 'update_creator_metadata';
          await emitAuditEvent({
             actor: actorId,
-            action: 'update_creator_metadata',
+            action,
             target: 'CreatorProfile',
             targetId: id,
             metadata: changes,

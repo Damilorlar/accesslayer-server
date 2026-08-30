@@ -21,6 +21,7 @@ import notificationsRouter from './notifications/notification.routes';
 import horizonWebhookRouter from './webhooks/horizon-webhook.routes';
 import vestingRouter from './vesting/vesting.routes';
 import investorRouter from './investor/investor.routes';
+import followerRouter from './followers/follower.routes';
 import { BASE as CREATORS_BASE } from '../constants/creator.constants';
 
 const router = Router();
@@ -52,5 +53,6 @@ router.use('/notifications', routeBodySizeLimit('default'), notificationsRouter)
 router.use('/webhooks', routeBodySizeLimit('default'), horizonWebhookRouter);
 router.use('/vesting', routeBodySizeLimit('default'), vestingRouter);
 router.use('/investor', routeBodySizeLimit('default'), investorRouter);
+router.use('/followers', routeBodySizeLimit('default'), followerRouter);
 
 export default router;

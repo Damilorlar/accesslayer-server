@@ -9,15 +9,23 @@ model KeyOwnership {
   // The ID or handle of the creator whose keys are owned
   creatorId     String
   
-  // The amount of keys owned
-  balance       Decimal  @default(0)
-  costBasis     Decimal? @default(0)
+   // The amount of keys owned
+   balance       Decimal  @default(0)
+   costBasis     Decimal? @default(0)
+
 
   /// When the current lockup window ends for this holding, if any.
   lockupExpiresAt DateTime?
 
   /// ISO timestamp of the holder's most recent buy, null when never bought.
   lastBuyAt DateTime?
+
+
+   /// Timestamp of the owner's most recent buy of this key, if any.
+   lastBuyAt     DateTime?
+
+   /// When the current lockup window ends for this holding, if any.
+   lockupExpiresAt DateTime?
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

@@ -26,7 +26,11 @@ describe('Key Sync Integration Tests', () => {
       const user = await prisma.user.create({
          data: {
             email: `test-${Date.now()}@example.com`,
+
             passwordHash: 'hash',
+
+            passwordHash: 'test-hash',
+
             firstName: 'Test',
             lastName: 'User',
             stellarWallet: { create: { address: 'GBTEST0001' } },
@@ -48,8 +52,13 @@ describe('Key Sync Integration Tests', () => {
       // Create price snapshot
       await prisma.creatorPriceSnapshot.create({
          data: {
+
             creatorId: testCreatorId,
             currentPrice: 100n,
+
+            creatorId: creator.id,
+            currentPrice: 100,
+
             lastTradeAt: new Date(),
          },
       });
@@ -59,7 +68,11 @@ describe('Key Sync Integration Tests', () => {
          await prisma.keyOwnership.create({
             data: {
                ownerAddress: `GHOLDER${String(i).padStart(52, '0')}`,
+
                creatorId: testCreatorId,
+
+               creatorId: creator.id,
+
                balance: 100,
             },
          });
