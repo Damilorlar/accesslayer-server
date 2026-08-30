@@ -29,8 +29,6 @@ describe('Key Sync Integration Tests', () => {
 
             passwordHash: 'hash',
 
-            passwordHash: 'test-hash',
-
             firstName: 'Test',
             lastName: 'User',
             stellarWallet: { create: { address: 'GBTEST0001' } },
@@ -69,9 +67,7 @@ describe('Key Sync Integration Tests', () => {
             data: {
                ownerAddress: `GHOLDER${String(i).padStart(52, '0')}`,
 
-               creatorId: testCreatorId,
-
-               creatorId: creator.id,
+creatorId: testCreatorId,
 
                balance: 100,
             },

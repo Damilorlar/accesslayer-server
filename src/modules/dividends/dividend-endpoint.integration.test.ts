@@ -236,9 +236,7 @@ describe('Dividend Endpoints Integration Tests', () => {
             data: {
                email: `test2-${Date.now()}@example.com`,
 
-               passwordHash: 'hash123',
-
-               passwordHash: 'test-hash',
+passwordHash: 'hash123',
 
                firstName: 'Test',
                lastName: 'User',

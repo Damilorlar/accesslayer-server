@@ -108,7 +108,6 @@ export const envSchema = z
          .int()
          .positive()
          .default(900),
-      JWT_EXPIRES_IN: z.string().default('1h'),
 
       // Redis cache
       REDIS_URL: z.string().default('redis://localhost:6379'),

@@ -60,12 +60,6 @@ export async function createSubscription(
 
   const redis = assertRedis();
 
-  const redis = getRedis();
-  if (!redis) {
-    throw new Error('Redis is unavailable; subscriptions require a Redis connection');
-  }
-
-
   const walletKey = walletSubsKey(walletAddress);
 
   const currentCount = await redis.zcard(walletKey);
@@ -110,9 +104,6 @@ export async function getSubscription(
 
   const redis = assertRedis();
 
-  const redis = getRedis();
-  if (!redis) return null;
-
   const data = await redis.hgetall(subKey(subscriptionId));
   if (!data || !data.walletAddress) return null;
 
@@ -128,9 +119,6 @@ export async function deleteSubscription(subscriptionId: string): Promise<void> 
 
   const redis = assertRedis();
 
-  const redis = getRedis();
-  if (!redis) return;
-n
   const sub = await getSubscription(subscriptionId);
   if (!sub) return;
 
@@ -145,9 +133,6 @@ export async function touchSubscription(subscriptionId: string): Promise<void> {
 
   const redis = assertRedis();
 
-  const redis = getRedis();
-  if (!redis) return;
-
   await redis.expire(subKey(subscriptionId), SUBSCRIPTION_TTL_S);
 }
 
@@ -156,9 +141,6 @@ export async function getLastCursor(
 ): Promise<string | null> {
 
   const redis = assertRedis();
-
-  const redis = getRedis();
-  if (!redis) return null;
 
   return redis.get(cursorKey(subscriptionId));
 }
@@ -170,18 +152,12 @@ export async function saveCursor(
 
   const redis = assertRedis();
 
-  const redis = getRedis();
-  if (!redis) return;
-
   await redis.set(cursorKey(subscriptionId), cursor);
 }
 
 export async function isThrottled(walletAddress: string): Promise<boolean> {
 
   const redis = assertRedis();
-
-  const redis = getRedis();
-  if (!redis) return false;
 
   const exists = await redis.exists(throttledKey(walletAddress));
   return exists === 1;
@@ -191,9 +167,6 @@ export async function setThrottled(walletAddress: string): Promise<void> {
 
   const redis = assertRedis();
 
-  const redis = getRedis();
-  if (!redis) return;
-
   await redis.setex(throttledKey(walletAddress), THROTTLE_DURATION_S, '1');
 }
 
@@ -202,9 +175,6 @@ export async function incrementConnectionCount(
 ): Promise<number> {
 
   const redis = assertRedis();
-
-  const redis = getRedis();
-  if (!redis) return 0;
 
   const count = await redis.incr(connectionCountKey(walletAddress));
   await redis.expire(connectionCountKey(walletAddress), 60);
@@ -216,9 +186,6 @@ export async function decrementConnectionCount(
 ): Promise<void> {
 
   const redis = assertRedis();
-
-  const redis = getRedis();
-  if (!redis) return;
 
   await redis.decr(connectionCountKey(walletAddress));
 }
@@ -234,15 +201,6 @@ export async function getWalletSubscriptions(
     '-1'
   );
 
-  const redis = getRedis();
-  if (!redis) return [];
-   const ids = await redis.zrange(
-     walletSubsKey(walletAddress),
-     '0',
-     '-1'
-   );
-
-
   const subs: Subscription[] = [];
   for (const id of ids) {
     const sub = await getSubscription(id);
@@ -256,9 +214,6 @@ export async function getSubscriptionsByTopic(
 ): Promise<Subscription[]> {
 
   const redis = assertRedis();
-
-  const redis = getRedis();
-  if (!redis) return [];
 
   const ids = await redis.keys(`${SUBSCRIPTION_KEY_PREFIX}*`);
   const subs: Subscription[] = [];
@@ -284,9 +239,6 @@ export async function getSubscriptionsByTopic(
 export async function pruneExpiredSubscriptions(): Promise<number> {
 
   const redis = assertRedis();
-
-  const redis = getRedis();
-  if (!redis) return 0;
 
   const walletKeys = await redis.keys(`${WALLET_SUBSCRIPTIONS_KEY_PREFIX}*`);
 

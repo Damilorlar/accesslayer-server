@@ -76,10 +76,10 @@ creatorsRouter.post(
          return;
       }
 
-      const keyId = req.params.keyId;
+const keyId = Array.isArray(req.params.keyId) ? req.params.keyId[0] : req.params.keyId;
       try {
-         const creatorProfile = await prisma.creatorProfile.findFirst({
-            where: { OR: [{ id: keyId }, { handle: keyId }] },
+          const creatorProfile = await prisma.creatorProfile.findFirst({
+             where: { OR: [{ id: keyId }, { handle: keyId }] },
          });
          if (!creatorProfile) {
             sendError(res, 404, ErrorCode.NOT_FOUND, 'Key not found');
