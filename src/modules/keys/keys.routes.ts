@@ -14,14 +14,8 @@ import {
    PRICE_HISTORY_INTERVALS,
 } from './key-price-history.service';
 import { getKeyFees, KeyNotFoundError } from './key-fees.service';
-import {
-   getKeyProposals,
-   KeyNotFoundError as ProposalKeyNotFoundError,
-} from './key-proposals.service';
-import {
-   getKeySupply,
-   KeyNotFoundError as SupplyKeyNotFoundError,
-} from './key-supply.service';
+import { getKeyProposals } from './key-proposals.service';
+import { getKeySupply } from './key-supply.service';
 import { KeySearchQueryTooShortError, searchKeys } from './key-search.service';
 import { KEY_SEARCH_MIN_QUERY_LENGTH } from '../../constants/notifications.constants';
 import dividendRouter from '../dividends/dividend.routes';
@@ -34,6 +28,9 @@ import { prisma } from '../../utils/prisma.utils';
 import { logger } from '../../utils/logger.utils';
 import { invalidateCreatorDashboardCache } from '../creator/creator-dashboard.service';
 
+import { cacheGetJson, cacheSetJson } from '../../utils/redis.utils';
+import { fetchCreatorProfilesByIds } from '../../utils/creator-batch.utils';
+
 const priceHistoryQuerySchema = z.object({
    from: z.string().datetime(),
    to: z.string().datetime(),
@@ -44,7 +41,72 @@ const searchQuerySchema = z.object({
    q: z.string(),
 });
 
+const batchKeysBodySchema = z.object({
+   ids: z.array(z.string()).min(1, 'Empty array').max(20, 'More than 20 IDs'),
+});
+
 const router = Router();
+
+/**
+ * POST /api/v1/keys/batch
+ * Batch key metadata endpoint to fetch details for multiple key IDs in a single request (#813).
+ */
+router.post('/batch', async (req, res, next) => {
+   const parsed = batchKeysBodySchema.safeParse(req.body);
+   if (!parsed.success) {
+      sendError(
+         res,
+         400,
+         ErrorCode.VALIDATION_ERROR,
+         'Invalid batch request body',
+         zodIssuesToDetails(parsed.error.issues)
+      );
+      return;
+   }
+
+   const { ids } = parsed.data;
+   try {
+      const results: (any | null)[] = [];
+      const missingIds: string[] = [];
+      const cachedMap = new Map<string, any>();
+
+      for (const id of ids) {
+         const cacheKey = `key:metadata:${id}`;
+         const cached = await cacheGetJson<any>(cacheKey);
+         if (cached !== null) {
+            cachedMap.set(id, cached);
+         } else {
+            missingIds.push(id);
+         }
+      }
+
+      const dbMap = new Map<string, any>();
+      if (missingIds.length > 0) {
+         const fetchedProfiles = await fetchCreatorProfilesByIds(missingIds);
+         for (let i = 0; i < missingIds.length; i++) {
+            const profile = fetchedProfiles[i];
+            if (profile) {
+               dbMap.set(missingIds[i], profile);
+               await cacheSetJson(`key:metadata:${missingIds[i]}`, profile, 60);
+            }
+         }
+      }
+
+      for (const id of ids) {
+         if (cachedMap.has(id)) {
+            results.push(cachedMap.get(id));
+         } else if (dbMap.has(id)) {
+            results.push(dbMap.get(id));
+         } else {
+            results.push(null);
+         }
+      }
+
+      sendSuccess(res, results);
+   } catch (error) {
+      next(error);
+   }
+});
 
 /**
  * GET /api/v1/keys/search?q=
@@ -126,7 +188,7 @@ router.get('/:keyId/proposals', async (req, res, next) => {
          await getKeyProposals(req.params.keyId, parsed.data.status)
       );
    } catch (error) {
-      if (error instanceof ProposalKeyNotFoundError) {
+      if (error instanceof KeyNotFoundError) {
          sendNotFound(res, 'Key');
          return;
       }
@@ -142,7 +204,7 @@ router.get('/:keyId/supply', async (req, res, next) => {
    try {
       sendSuccess(res, await getKeySupply(req.params.keyId));
    } catch (error) {
-      if (error instanceof SupplyKeyNotFoundError) {
+      if (error instanceof KeyNotFoundError) {
          sendNotFound(res, 'Key');
          return;
       }

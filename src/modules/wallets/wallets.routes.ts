@@ -4,7 +4,8 @@ import { httpGetWalletHoldings } from "./wallet-holdings.controllers";
 import { httpGetWalletFollowing } from "./wallet-following.controllers";
 import { cacheControl } from "../../middlewares/cache-control.middleware";
 import { ACTIVITY_FEED_CACHE_PRESET } from "../../constants/activity-feed-cache.constants";
-import { requireJwtAuth, requireWalletParamMatch } from "../../middlewares/jwt-auth.middleware";
+import { requireWalletParamMatch } from "../../middlewares/jwt-auth.middleware";
+import { jwtAuth } from "../../middlewares/jwt.middleware";
 
 const walletsRouter = Router();
 
@@ -35,6 +36,6 @@ walletsRouter.get("/:address/holdings", httpGetWalletHoldings);
  * Returns all creators that the given wallet follows, ordered
  * alphabetically by display name. Requires JWT authentication.
  */
-walletsRouter.get('/:address/following', requireJwtAuth, httpGetWalletFollowing);
+walletsRouter.get('/:address/following', jwtAuth, httpGetWalletFollowing);
 
 export default walletsRouter;

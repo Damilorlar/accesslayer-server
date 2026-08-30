@@ -28,6 +28,10 @@ import {
    creatorProfileExists,
    getCreatorProfile,
 } from '../creator/creator-profile.service';
+import { MAX_PAGE_SIZE } from '../../constants/pagination.constants';
+
+/** Hard cap applied to every leaderboard response regardless of caller-supplied limit. */
+const LEADERBOARD_MAX_ENTRIES = MAX_PAGE_SIZE; // 100
 
 /**
  * Controller for GET /api/v1/creators
@@ -200,13 +204,32 @@ export const httpGetCreator: AsyncController = async (req, res, next) => {
  * Returns creators ranked by holder count descending. Ties are broken
  * alphabetically by creator (Stellar wallet) address so the ordering is
  * stable across requests regardless of database iteration order.
+ *
+ * The response is capped at LEADERBOARD_MAX_ENTRIES (100) regardless of
+ * how many creators exist in the database or what `limit` the caller
+ * passes. Passing a `limit` query param above 100 is silently clamped to
+ * 100; passing a value below 1 is clamped to 1. The total number of
+ * creators in the database is always returned as `total_count` so clients
+ * can tell whether more entries exist beyond the cap.
  */
 export const httpGetCreatorLeaderboard: AsyncController = async (
-   _req,
+   req,
    res,
    next
 ) => {
    try {
+      // Parse and clamp the caller-supplied limit.
+      // Any value above LEADERBOARD_MAX_ENTRIES is silently capped.
+      const rawLimit = parseInt(
+         Array.isArray(req.query.limit)
+            ? String(req.query.limit[0])
+            : String(req.query.limit ?? ''),
+         10
+      );
+      const effectiveLimit = isNaN(rawLimit)
+         ? LEADERBOARD_MAX_ENTRIES
+         : Math.min(Math.max(1, rawLimit), LEADERBOARD_MAX_ENTRIES);
+
       const creators = await prisma.creatorProfile.findMany({
          select: {
             id: true,
@@ -258,13 +281,17 @@ export const httpGetCreatorLeaderboard: AsyncController = async (
          return 0;
       });
 
-      const items = entries.map((entry, index) => ({
+      // total_count reflects all creators before applying the cap so
+      // clients know whether entries were truncated.
+      const total_count = entries.length;
+
+      const items = entries.slice(0, effectiveLimit).map((entry, index) => ({
          rank: index + 1,
          ...entry,
       }));
 
       attachTimestampHeader(res);
-      sendSuccess(res, { items });
+      sendSuccess(res, { items, total_count });
    } catch (error) {
       next(error);
    }

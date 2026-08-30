@@ -15,6 +15,7 @@ export const CREATOR_DETAIL_DEFAULT_SELECT = {
    avatarUrl: true,
    perks: true,
    isVerified: true,
+   tradingPaused: true,
    createdAt: true,
    updatedAt: true,
    priceSnapshot: {

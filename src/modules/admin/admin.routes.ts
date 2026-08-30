@@ -27,8 +27,13 @@ import {
    zodIssuesToDetails,
 } from '../../utils/api-response.utils';
 import { ErrorCode } from '../../constants/error.constants';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../utils/prisma.utils';
 import { logger } from '../../utils/logger.utils';
+
+function isValidStellarAddress(address: string): boolean {
+   return typeof address === 'string' && /^G[A-Z2-7]{55}$/.test(address);
+}
 
 const adminRouter = Router();
 
@@ -39,6 +44,95 @@ adminRouter.post('/keys/:keyId/resume', adminGuard, httpSetKeyTradingPaused);
 adminRouter.post('/keys/:keyId/sync', adminGuard, httpSyncKeyState);
 adminRouter.patch('/protocol-fee', adminGuard, httpUpdateProtocolFee);
 adminRouter.get('/audit-log', adminGuard, httpGetAuditLog);
+
+/**
+ * POST /api/v1/admin/vesting
+ * Add a vesting schedule creation endpoint for admins (#835).
+ */
+adminRouter.post('/vesting', adminGuard, async (req: AdminRequest, res, next) => {
+   const { keyId, beneficiary, totalKeys, startLedger } = req.body || {};
+
+   if (totalKeys === undefined || totalKeys === null || typeof totalKeys !== 'number' || totalKeys <= 0) {
+      sendError(res, 422, ErrorCode.UNPROCESSABLE_ENTITY, 'totalKeys must be a positive number');
+      return;
+   }
+
+   if (!beneficiary || !isValidStellarAddress(beneficiary)) {
+      sendError(res, 422, ErrorCode.UNPROCESSABLE_ENTITY, 'Invalid beneficiary address');
+      return;
+   }
+
+   if (!keyId || startLedger === undefined) {
+      sendError(res, 422, ErrorCode.UNPROCESSABLE_ENTITY, 'keyId and startLedger are required');
+      return;
+   }
+
+   try {
+      const vestingPeriodSeconds = 90 * 24 * 60 * 60; // 90 days
+      const endLedger = Number(startLedger) + Math.floor(vestingPeriodSeconds / 5);
+      const vestingEndsAt = new Date(Date.now() + vestingPeriodSeconds * 1000);
+
+      const schedule = await prisma.vestingSchedule.create({
+         data: {
+            keyId: String(keyId),
+            wallet: String(beneficiary),
+            totalKeys: new Prisma.Decimal(totalKeys),
+            startLedger: Number(startLedger),
+            endLedger,
+            claimedKeys: new Prisma.Decimal(0),
+         },
+      });
+
+      sendSuccess(res, {
+         ...schedule,
+         totalKeys: Number(schedule.totalKeys),
+         claimedKeys: Number(schedule.claimedKeys),
+         vestingEndsAt: vestingEndsAt.toISOString(),
+      });
+   } catch (error) {
+      next(error);
+   }
+});
+
+/**
+ * POST /api/v1/admin/protocol/fee
+ * Add a protocol fee update endpoint for admins (#839).
+ */
+adminRouter.post('/protocol/fee', adminGuard, async (req: AdminRequest, res, next) => {
+   const { feeBps, treasuryAddress } = req.body || {};
+
+   if (feeBps === undefined || feeBps === null || typeof feeBps !== 'number' || feeBps < 0 || feeBps > 1000) {
+      sendError(res, 422, ErrorCode.UNPROCESSABLE_ENTITY, 'feeBps must be between 0 and 1000');
+      return;
+   }
+
+   if (!treasuryAddress || !isValidStellarAddress(treasuryAddress)) {
+      sendError(res, 422, ErrorCode.UNPROCESSABLE_ENTITY, 'Invalid treasury address');
+      return;
+   }
+
+   try {
+      const executionNotBefore = new Date(Date.now() + 48 * 60 * 60 * 1000);
+      const proposalId = `tl-fee-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+      const proposal = await prisma.timelockProposal.create({
+         data: {
+            proposalId,
+            changeType: 'update_fee',
+            payload: { feeBps, treasuryAddress },
+            executionNotBefore,
+            status: 'pending',
+         },
+      });
+
+      sendSuccess(res, {
+         proposalId: proposal.proposalId,
+         executionNotBefore: proposal.executionNotBefore.toISOString(),
+      });
+   } catch (error) {
+      next(error);
+   }
+});
 
 // ── Timelock proposal management ──────────────────────────────
 

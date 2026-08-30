@@ -1,4 +1,4 @@
-import { getRequiredRedisClient } from './redis.utils';
+import { getRedis } from './redis.utils';
 import { logger } from './logger.utils';
 
 const LOCK_TTL_SECONDS = 15;
@@ -22,7 +22,14 @@ function lockKey(creatorWallet: string): string {
 export async function acquireSequencerLock(
    creatorWallet: string
 ): Promise<{ release: () => Promise<void> }> {
-   const redis = getRequiredRedisClient();
+   const redis = getRedis();
+
+   if (!redis) {
+      // Redis caching is disabled: degrade to a no-op lock so single-instance
+      // operation continues without distributed coordination.
+      return { release: async () => {} };
+   }
+
    const key = lockKey(creatorWallet);
    const lockValue = `${process.pid}:${Date.now()}`;
    const deadline = Date.now() + LOCK_ACQUIRE_TIMEOUT_MS;

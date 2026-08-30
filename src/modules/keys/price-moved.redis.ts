@@ -1,5 +1,5 @@
 // src/modules/keys/price-moved.redis.ts
-import { getRequiredRedisClient } from '../../utils/redis.utils';
+import { getRedis } from '../../utils/redis.utils';
 import { prisma } from '../../utils/prisma.utils';
 import {
    PRICE_MOVED_SET_TTL_SECONDS,
@@ -7,7 +7,8 @@ import {
 } from '../../constants/notifications.constants';
 
 export async function writePriceMovedKeys(keyIds: string[]): Promise<void> {
-   const redis = getRequiredRedisClient();
+   const redis = getRedis();
+   if (!redis) return;
    const pipeline = redis.pipeline();
    pipeline.del(REDIS_KEYS.priceMovedSet);
    if (keyIds.length > 0) {
@@ -18,14 +19,17 @@ export async function writePriceMovedKeys(keyIds: string[]): Promise<void> {
 }
 
 export async function getPriceMovedKeyIds(): Promise<string[]> {
-   return getRequiredRedisClient().smembers(REDIS_KEYS.priceMovedSet);
+   const redis = getRedis();
+   if (!redis) return [];
+   return redis.smembers(REDIS_KEYS.priceMovedSet);
 }
 
 export async function markPriceMovedDelivered(
    keyId: string,
    walletAddress: string
 ): Promise<void> {
-   const redis = getRequiredRedisClient();
+   const redis = getRedis();
+   if (!redis) return;
    const deliveredKey = REDIS_KEYS.priceMovedDelivered(keyId);
    await redis.sadd(deliveredKey, walletAddress);
    await redis.expire(deliveredKey, PRICE_MOVED_SET_TTL_SECONDS);
