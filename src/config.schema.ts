@@ -272,12 +272,6 @@ export const envSchema = z
          .positive()
          .default(300000),
 
-      SSE_MAX_SUBSCRIPTIONS_PER_WALLET: z.coerce
-         .number()
-         .int()
-         .positive()
-         .default(10),
-
       SSE_THROTTLE_DURATION_MS: z.coerce
          .number()
          .int()

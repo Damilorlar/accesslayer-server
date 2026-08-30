@@ -23,8 +23,6 @@ describe('Whitelist Endpoint Integration Tests', () => {
 
             passwordHash: 'hash',
 
-            passwordHash: 'test-hash',
-
             firstName: 'Test',
             lastName: 'User',
             stellarWallet: { create: { address: 'GBTEST0001' } },
