@@ -78,6 +78,9 @@ creatorsRouter.post(
             ? req.params.keyId[0]
             : req.params.keyId;
 
+      const keyId = Array.isArray(req.params.keyId)
+         ? req.params.keyId[0]
+         : req.params.keyId;
       try {
          const creatorProfile = await prisma.creatorProfile.findFirst({
             where: { OR: [{ id: keyId }, { handle: keyId }] },
