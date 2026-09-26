@@ -1,212 +1,171 @@
 // src/modules/keys/key-analytics.service.ts
-// Payment-asset analytics for key purchase tracking (#934).
-//
-// Two query surfaces:
-//
-//   getKeyPaymentAssetAnalytics(keyId)
-//     Per-key breakdown: trade count, unique buyers, and total price (stroops)
-//     grouped by paymentAsset. Used by GET /keys/:keyId/analytics.
-//
-//   getPlatformPaymentAssetDistribution()
-//     Platform-wide: same aggregation across ALL keys plus a percentage share
-//     per asset. Used by GET /keys/analytics/payment-assets (admin).
-//
-// Both surfaces read from the Trade table directly — it is the canonical
-// source of truth for payment asset data. Activity.payload.payment_asset is
-// written in parallel by the indexer (for event-stream consumers) but is not
-// queried here to avoid parsing Json.
-//
-// Caching: both results are cached in Redis for 5 minutes. Cache is
-// invalidated by keyId after each successful trade write (the trade-indexer
-// already calls invalidateCreatorDashboardCache; callers should also call
-// invalidateKeyAnalyticsCache).
-
+// Trade count, unique trader, and volume analytics per creator key and
+// platform-wide (#916). Sourced from the Trade table, which the trade indexer
+// populates from on-chain buy events. Results are cached for 60s per key and
+// time window; the trade indexer invalidates them on every new trade.
+import { z } from 'zod';
 import { prisma } from '../../utils/prisma.utils';
-import { cacheGetJson, cacheSetJson, cacheInvalidate } from '../../utils/redis.utils';
+import {
+   cacheGetJson,
+   cacheInvalidate,
+   cacheSetJson,
+} from '../../utils/redis.utils';
+import { KeyNotFoundError } from './key-fees.service';
 
-// ── Constants ─────────────────────────────────────────────────
+export const KEY_ANALYTICS_CACHE_TTL_SECONDS = 60;
 
-const KEY_ANALYTICS_TTL = 300;        // 5 min
-const PLATFORM_ANALYTICS_TTL = 300;   // 5 min
-
-const KEY_ANALYTICS_CACHE_PREFIX = 'key:analytics:payment-assets';
-const PLATFORM_ANALYTICS_CACHE_KEY = 'platform:analytics:payment-assets';
-
-// ── Cache helpers (exported for route-layer invalidation) ─────
-
-export function buildKeyAnalyticsCacheKey(keyId: string): string {
-   return `${KEY_ANALYTICS_CACHE_PREFIX}:${keyId}`;
+export interface AnalyticsWindow {
+   from?: Date;
+   to?: Date;
 }
 
-export async function invalidateKeyAnalyticsCache(keyId: string): Promise<void> {
-   await cacheInvalidate(
-      buildKeyAnalyticsCacheKey(keyId),
-      PLATFORM_ANALYTICS_CACHE_KEY,
+/** Optional ISO-8601 `from` / `to` query params bounding Trade.timestamp. */
+export const analyticsWindowQuerySchema = z
+   .object({
+      from: z.string().datetime().optional(),
+      to: z.string().datetime().optional(),
+   })
+   .refine(q => !q.from || !q.to || new Date(q.from) <= new Date(q.to), {
+      message: 'from must be before or equal to to',
+      path: ['from'],
+   })
+   .transform(
+      (q): AnalyticsWindow => ({
+         from: q.from ? new Date(q.from) : undefined,
+         to: q.to ? new Date(q.to) : undefined,
+      })
    );
+
+export interface TradeStats {
+   trade_count: number;
+   unique_traders: number;
+   total_volume: string;
 }
 
-// ── Shared item shapes ────────────────────────────────────────
-
-export interface PaymentAssetBreakdownItem {
-   /** Normalised asset code, e.g. 'XLM', 'USDC'. */
-   paymentAsset: string;
-   tradeCount: number;
-   uniqueBuyers: number;
-   /** Sum of the raw `price` field (stroops) as a string to preserve precision. */
-   totalPriceStroops: string;
-}
-
-export interface KeyPaymentAssetAnalytics {
+export interface KeyAnalytics extends TradeStats {
    keyId: string;
-   generatedAt: string;
-   breakdown: PaymentAssetBreakdownItem[];
+   from: string | null;
+   to: string | null;
 }
 
-export interface PlatformPaymentAssetEntry extends PaymentAssetBreakdownItem {
-   /** Percentage share of total platform trade count, rounded to 4 dp. */
-   sharePercent: number;
+export interface PlatformAnalytics extends TradeStats {
+   key_count: number;
+   from: string | null;
+   to: string | null;
 }
 
-export interface PlatformPaymentAssetDistribution {
-   generatedAt: string;
-   totalTrades: number;
-   breakdown: PlatformPaymentAssetEntry[];
+function windowSuffix(window: AnalyticsWindow): string {
+   return `${window.from?.toISOString() ?? '-'}:${window.to?.toISOString() ?? '-'}`;
 }
 
-// ── Per-key analytics ─────────────────────────────────────────
+export function getKeyAnalyticsCacheKey(
+   keyId: string,
+   window: AnalyticsWindow = {}
+): string {
+   return `key:analytics:${keyId}:${windowSuffix(window)}`;
+}
+
+export function getPlatformAnalyticsCacheKey(
+   window: AnalyticsWindow = {}
+): string {
+   return `platform:analytics:${windowSuffix(window)}`;
+}
 
 /**
- * Return trade counts, unique buyers, and total price grouped by paymentAsset
- * for a single creator key.
- *
- * Trades with no paymentAsset (pre-migration rows) have DEFAULT 'XLM' so they
- * are automatically included in the XLM bucket.
- *
- * Cached for 5 minutes per keyId.
+ * Drop every cached analytics window for the key, plus every platform
+ * aggregate window, since a new trade changes both.
  */
-export async function getKeyPaymentAssetAnalytics(
+export async function invalidateKeyAnalyticsCache(
    keyId: string
-): Promise<KeyPaymentAssetAnalytics> {
-   const cacheKey = buildKeyAnalyticsCacheKey(keyId);
-   const cached = await cacheGetJson<KeyPaymentAssetAnalytics>(cacheKey);
-   if (cached) return cached;
+): Promise<void> {
+   await cacheInvalidate(`key:analytics:${keyId}:*`, 'platform:analytics:*');
+}
 
-   // Resolve by id OR handle so the route can pass either.
-   const profile = await prisma.creatorProfile.findFirst({
-      where: { OR: [{ id: keyId }, { handle: keyId }] },
+function buildTimestampFilter(window: AnalyticsWindow) {
+   if (!window.from && !window.to) return undefined;
+   return {
+      ...(window.from ? { gte: window.from } : {}),
+      ...(window.to ? { lte: window.to } : {}),
+   };
+}
+
+/**
+ * Aggregate trade rows into count, distinct buyers, and volume
+ * (sum of price * quantity, in the same base units as Trade.price).
+ */
+export function aggregateTrades(
+   trades: Array<{ buyer: string; price: string; quantity: string }>
+): TradeStats {
+   const traders = new Set<string>();
+   let volume = 0n;
+   for (const trade of trades) {
+      traders.add(trade.buyer);
+      volume += BigInt(trade.price) * BigInt(trade.quantity);
+   }
+   return {
+      trade_count: trades.length,
+      unique_traders: traders.size,
+      total_volume: volume.toString(),
+   };
+}
+
+export async function getKeyAnalytics(
+   keyId: string,
+   window: AnalyticsWindow = {}
+): Promise<KeyAnalytics> {
+   const cacheKey = getKeyAnalyticsCacheKey(keyId, window);
+   const cached = await cacheGetJson<KeyAnalytics>(cacheKey);
+   if (cached) {
+      return cached;
+   }
+
+   const creator = await prisma.creatorProfile.findUnique({
+      where: { id: keyId },
       select: { id: true },
    });
-   const resolvedId = profile?.id ?? keyId;
-
-   // groupBy paymentAsset, counting rows and summing price.
-   const rows = await prisma.trade.groupBy({
-      by: ['paymentAsset'],
-      where: { creatorId: resolvedId },
-      _count: { _all: true },
-      _sum:   { price: false } as any, // price is String — handled via raw below
-   });
-
-   // Prisma groupBy can't SUM a String field, so we fetch the raw sums with
-   // findMany and aggregate in JS. The dataset per key is bounded; for very
-   // high volume keys this is still fast because we only pull (paymentAsset,
-   // price, buyer) tuples.
-   const trades = await prisma.trade.findMany({
-      where: { creatorId: resolvedId },
-      select: { paymentAsset: true, price: true, buyer: true },
-   });
-
-   const assetMap = new Map<string, { count: number; buyers: Set<string>; totalStroops: bigint }>();
-
-   for (const t of trades) {
-      const asset = t.paymentAsset;
-      if (!assetMap.has(asset)) {
-         assetMap.set(asset, { count: 0, buyers: new Set(), totalStroops: 0n });
-      }
-      const bucket = assetMap.get(asset)!;
-      bucket.count++;
-      bucket.buyers.add(t.buyer);
-      try {
-         bucket.totalStroops += BigInt(t.price);
-      } catch {
-         // non-numeric price — skip sum contribution
-      }
+   if (!creator) {
+      throw new KeyNotFoundError(keyId);
    }
 
-   const breakdown: PaymentAssetBreakdownItem[] = Array.from(assetMap.entries())
-      .map(([paymentAsset, b]) => ({
-         paymentAsset,
-         tradeCount: b.count,
-         uniqueBuyers: b.buyers.size,
-         totalPriceStroops: b.totalStroops.toString(),
-      }))
-      .sort((a, b) => b.tradeCount - a.tradeCount);
+   const timestamp = buildTimestampFilter(window);
+   const trades = await prisma.trade.findMany({
+      where: { creatorId: keyId, ...(timestamp ? { timestamp } : {}) },
+      select: { buyer: true, price: true, quantity: true },
+   });
 
-   const result: KeyPaymentAssetAnalytics = {
-      keyId: resolvedId,
-      generatedAt: new Date().toISOString(),
-      breakdown,
+   const analytics: KeyAnalytics = {
+      keyId,
+      ...aggregateTrades(trades),
+      from: window.from?.toISOString() ?? null,
+      to: window.to?.toISOString() ?? null,
    };
 
-   await cacheSetJson(cacheKey, result, KEY_ANALYTICS_TTL);
-   return result;
+   await cacheSetJson(cacheKey, analytics, KEY_ANALYTICS_CACHE_TTL_SECONDS);
+   return analytics;
 }
 
-// ── Platform-wide distribution ────────────────────────────────
-
-/**
- * Return the platform-wide payment-asset distribution across all trades.
- *
- * Each entry includes a `sharePercent` (percentage of total trade count).
- * Sorted by tradeCount descending so the dominant asset appears first.
- *
- * Cached for 5 minutes (single key, no per-key variation).
- */
-export async function getPlatformPaymentAssetDistribution(): Promise<PlatformPaymentAssetDistribution> {
-   const cached = await cacheGetJson<PlatformPaymentAssetDistribution>(PLATFORM_ANALYTICS_CACHE_KEY);
-   if (cached) return cached;
-
-   const trades = await prisma.trade.findMany({
-      select: { paymentAsset: true, price: true, buyer: true },
-   });
-
-   const assetMap = new Map<string, { count: number; buyers: Set<string>; totalStroops: bigint }>();
-
-   for (const t of trades) {
-      const asset = t.paymentAsset;
-      if (!assetMap.has(asset)) {
-         assetMap.set(asset, { count: 0, buyers: new Set(), totalStroops: 0n });
-      }
-      const bucket = assetMap.get(asset)!;
-      bucket.count++;
-      bucket.buyers.add(t.buyer);
-      try {
-         bucket.totalStroops += BigInt(t.price);
-      } catch {
-         // non-numeric price — skip
-      }
+export async function getPlatformAnalytics(
+   window: AnalyticsWindow = {}
+): Promise<PlatformAnalytics> {
+   const cacheKey = getPlatformAnalyticsCacheKey(window);
+   const cached = await cacheGetJson<PlatformAnalytics>(cacheKey);
+   if (cached) {
+      return cached;
    }
 
-   const totalTrades = trades.length;
+   const timestamp = buildTimestampFilter(window);
+   const trades = await prisma.trade.findMany({
+      where: timestamp ? { timestamp } : {},
+      select: { buyer: true, creatorId: true, price: true, quantity: true },
+   });
 
-   const breakdown: PlatformPaymentAssetEntry[] = Array.from(assetMap.entries())
-      .map(([paymentAsset, b]) => ({
-         paymentAsset,
-         tradeCount: b.count,
-         uniqueBuyers: b.buyers.size,
-         totalPriceStroops: b.totalStroops.toString(),
-         sharePercent:
-            totalTrades > 0
-               ? Math.round((b.count / totalTrades) * 100 * 10_000) / 10_000
-               : 0,
-      }))
-      .sort((a, b) => b.tradeCount - a.tradeCount);
-
-   const result: PlatformPaymentAssetDistribution = {
-      generatedAt: new Date().toISOString(),
-      totalTrades,
-      breakdown,
+   const analytics: PlatformAnalytics = {
+      ...aggregateTrades(trades),
+      key_count: new Set(trades.map(t => t.creatorId)).size,
+      from: window.from?.toISOString() ?? null,
+      to: window.to?.toISOString() ?? null,
    };
 
-   await cacheSetJson(PLATFORM_ANALYTICS_CACHE_KEY, result, PLATFORM_ANALYTICS_TTL);
-   return result;
+   await cacheSetJson(cacheKey, analytics, KEY_ANALYTICS_CACHE_TTL_SECONDS);
+   return analytics;
 }
