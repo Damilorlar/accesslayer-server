@@ -76,6 +76,11 @@ export async function processTradeEvents(
 
       const { creatorId, actor, amount, price, feePaid, tradeAt, ledger } =
          event;
+      // payment_asset is optional — absent events default to 'XLM' (#934).
+      const paymentAsset: string =
+         typeof event.paymentAsset === 'string' && event.paymentAsset.trim() !== ''
+            ? event.paymentAsset.trim().toUpperCase()
+            : 'XLM';
 
       // 1. Create corresponding Activity record
       await prisma.activity.create({

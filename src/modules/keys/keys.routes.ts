@@ -97,6 +97,11 @@ import {
    matchTierForLockPeriod,
    calculateEffectiveWeight,
 } from '../staking/staking.service';
+import { getSunsetWatchList } from './key-sunset-watch.service';
+import {
+   getKeyPaymentAssetAnalytics,
+   getPlatformPaymentAssetDistribution,
+} from './key-analytics.service';
 
 const priceHistoryQuerySchema = z.object({
    from: z.string().datetime(),
@@ -493,6 +498,69 @@ router.get(
       }
    }
 );
+
+/**
+ * GET /api/v1/keys/analytics/payment-assets
+ * Admin-only. Platform-wide payment asset distribution across all key purchases.
+ * Must be registered before /:keyId to avoid route shadowing.
+ */
+router.get(
+   '/analytics/payment-assets',
+   adminGuard,
+   async (_req: AdminRequest, res, next) => {
+      try {
+         sendSuccess(res, await getPlatformPaymentAssetDistribution());
+      } catch (error) {
+         logger.error({ error }, 'GET /keys/analytics/payment-assets failed');
+         next(error);
+      }
+   }
+);
+
+/**
+ * GET /api/v1/keys/sunset-watch
+ * Admin-only. Keys approaching or past the inactivity sunset threshold.
+ * Must be registered before /:keyId to avoid route shadowing.
+ */
+const sunsetWatchQuerySchema = z.object({
+   limit: z.coerce.number().int().min(1).max(100).default(20),
+   offset: z.coerce.number().int().min(0).default(0),
+});
+
+router.get(
+   '/sunset-watch',
+   adminGuard,
+   async (req: AdminRequest, res, next) => {
+      const parsed = sunsetWatchQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+         sendValidationError(res, 'Invalid query parameters', zodIssuesToDetails(parsed.error.issues));
+         return;
+      }
+      try {
+         sendSuccess(res, await getSunsetWatchList({ limit: parsed.data.limit, offset: parsed.data.offset }));
+      } catch (error) {
+         logger.error({ error }, 'GET /keys/sunset-watch failed');
+         next(error);
+      }
+   }
+);
+
+/**
+ * GET /api/v1/keys/:keyId/analytics
+ * Payment-asset breakdown for a single key. Publicly accessible.
+ */
+router.get('/:keyId/analytics', async (req, res, next) => {
+   try {
+      sendSuccess(res, await getKeyPaymentAssetAnalytics(String(req.params.keyId)));
+   } catch (error) {
+      if (error instanceof KeyNotFoundError) {
+         sendNotFound(res, 'Key');
+         return;
+      }
+      logger.error({ error, keyId: req.params.keyId }, 'GET /keys/:keyId/analytics failed');
+      next(error);
+   }
+});
 
 /**
  * GET /api/v1/keys/:keyId
