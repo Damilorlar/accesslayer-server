@@ -1,0 +1,93 @@
+// prisma/schema/staking.prisma
+// Staking NFT position read model (#932).
+//
+// Each StakingNft represents a tradeable stake receipt minted on-chain when a
+// wallet locks creator keys into the staking contract.  The NFT carries the
+// staked amount and lock expiry so it can be traded independently of the
+// underlying key position.
+//
+// Ownership is kept current by processing StakeNFTMinted and
+// StakeNFTTransferred contract events in the indexer pipeline (see
+// src/modules/staking/staking-indexer.service.ts).
+//
+// StakingNftTransfer is the append-only ownership history log for a single
+// NFT; every transfer event (including the initial mint-to-owner) is written
+// here so GET /staking/nfts/:id/transfers can return the full provenance.
+
+model StakingNft {
+  id              String   @id @default(cuid())
+
+  /// On-chain token ID emitted by the contract (unique per network).
+  tokenId         String   @unique
+
+  /// Wallet currently holding this NFT.
+  ownerAddress    String
+
+  /// Creator key the staked tokens belong to.
+  keyId           String
+
+  /// Number of creator keys locked in this NFT position (stored as string
+  /// to preserve full precision; convert to Decimal/BigInt in application code).
+  stakedAmount    Decimal  @db.Decimal(30, 7)
+
+  /// Ledger at which the lock expires (null = no lock / already expired).
+  lockExpiryLedger Int?
+
+  /// Wall-clock time at which the lock expires, derived from lockExpiryLedger
+  /// by the indexer (null until computed or if no lock).
+  lockExpiresAt   DateTime?
+
+  /// Whether this NFT has been burned / redeemed.  Burned NFTs are kept for
+  /// history but excluded from active-position queries.
+  burned          Boolean  @default(false)
+  burnedAt        DateTime?
+
+  /// Ledger sequence of the minting transaction.
+  mintLedger      Int
+
+  /// Transaction hash of the minting transaction (used for idempotency).
+  mintTxHash      String   @unique
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  transfers       StakingNftTransfer[]
+
+  @@index([ownerAddress])
+  @@index([keyId])
+  @@index([ownerAddress, burned])
+  @@map("staking_nfts")
+}
+
+/// Append-only ownership history for a staking NFT.
+/// The first row for each NFT is the mint event (fromAddress IS NULL).
+model StakingNftTransfer {
+  id              String   @id @default(cuid())
+
+  nftId           String
+
+  /// Sender wallet — null on the initial mint.
+  fromAddress     String?
+
+  /// Recipient wallet.
+  toAddress       String
+
+  /// Ledger sequence of the transfer transaction.
+  ledger          Int
+
+  /// On-chain transaction hash (used for idempotency).
+  txHash          String
+
+  /// Index within the transaction (used together with txHash for idempotency).
+  eventIndex      Int
+
+  occurredAt      DateTime
+  createdAt       DateTime @default(now())
+
+  nft             StakingNft @relation(fields: [nftId], references: [id], onDelete: Cascade)
+
+  @@unique([txHash, eventIndex])
+  @@index([nftId, occurredAt(sort: Desc)])
+  @@index([toAddress])
+  @@map("staking_nft_transfers")
+}

@@ -27,6 +27,8 @@ import protocolRouter from './protocol/protocol.routes';
 import revenueRouter from './revenue/revenue.routes';
 import stakerRouter from './revenue/staker-revenue.routes';
 import portfolioRouter from './portfolio/portfolio.routes';
+import stakingRouter from './staking/staking.routes';
+import { delegationRouter, delegatorsRouter } from './governance/governance.routes';
 import { BASE as CREATORS_BASE } from '../constants/creator.constants';
 
 const router = Router();
@@ -71,5 +73,8 @@ router.use('/protocol', routeBodySizeLimit('default'), protocolRouter);
 router.use('/revenue', routeBodySizeLimit('default'), revenueRouter);
 router.use('/staker', routeBodySizeLimit('default'), stakerRouter);
 router.use('/portfolio', routeBodySizeLimit('default'), portfolioRouter);
+router.use('/staking', routeBodySizeLimit('default'), stakingRouter);
+router.use('/governance/delegation', routeBodySizeLimit('default'), delegationRouter);
+router.use('/governance/delegators', routeBodySizeLimit('default'), delegatorsRouter);
 
 export default router;

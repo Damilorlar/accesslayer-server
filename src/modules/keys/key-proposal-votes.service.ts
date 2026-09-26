@@ -2,6 +2,7 @@
 import { prisma } from '../../utils/prisma.utils';
 import { logger } from '../../utils/logger.utils';
 import { Decimal } from '@prisma/client/runtime/library';
+import { getDelegatedVoteWeight } from '../governance/governance-delegation.service';
 
 export class HolderNotEligibleError extends Error {
    constructor(wallet: string) {
@@ -30,7 +31,14 @@ export interface CastVoteResult {
    proposalId: string;
    optionIndex: number;
    option: string;
+   /** Total vote weight including delegated weight from active delegators. */
    weight: string;
+   /** The voter's own key balance. */
+   ownWeight: string;
+   /** Sum of delegated weight from all active delegators. */
+   delegatedWeight: string;
+   /** Number of active delegators whose weight was included. */
+   delegatorCount: number;
 }
 
 /**
@@ -80,9 +88,16 @@ export async function hasWalletVoted(
 /**
  * Submit a governance vote on behalf of a key holder and persist it.
  *
- * The voter's key balance becomes the vote weight. The vote record is
- * written to the `proposal_votes` table; a duplicate vote surfaces as a
- * Prisma unique constraint violation mapped by the route to 409.
+ * Vote weight = voter's own key balance + sum of key balances of all wallets
+ * that have an active vote delegation pointing to this voter on the same key.
+ * Revoked delegations are excluded from the weight calculation.
+ *
+ * The vote record is written to the `proposal_votes` table with the combined
+ * weight.  A duplicate vote surfaces as a Prisma unique constraint violation
+ * mapped by the route to 409.
+ *
+ * @returns CastVoteResult with the total weight broken down into ownWeight
+ *   and delegatedWeight so callers can inspect the composition.
  */
 export async function castKeyProposalVote(
    keyId: string,
@@ -102,14 +117,15 @@ export async function castKeyProposalVote(
       throw new OptionIndexOutOfRangeError(optionIndex, options.length);
    }
 
+   // Own balance — determines eligibility.
    const ownership = await prisma.keyOwnership.findUnique({
       where: {
          ownerAddress_creatorId: { ownerAddress: wallet, creatorId: keyId },
       },
    });
 
-   const balance = ownership ? Number(ownership.balance) : 0;
-   if (balance <= 0) {
+   const ownBalance = ownership ? Number(ownership.balance) : 0;
+   if (ownBalance <= 0) {
       throw new HolderNotEligibleError(wallet);
    }
 
@@ -118,7 +134,20 @@ export async function castKeyProposalVote(
       throw new DuplicateVoteError();
    }
 
-   const weight = String(balance);
+   // Delegated weight: sum of key balances of all active delegators.
+   // Fetched outside the transaction because it is read-only and does not
+   // need to be part of the atomic write.
+   const [delegatedBalance, delegatorCount] = await Promise.all([
+      getDelegatedVoteWeight(wallet, keyId),
+      prisma.voteDelegation.count({
+         where: { delegateeWallet: wallet, keyId, isActive: true },
+      }),
+   ]);
+
+   const totalWeight = ownBalance + delegatedBalance;
+   const weightStr = String(totalWeight);
+   const ownWeightStr = String(ownBalance);
+   const delegatedWeightStr = String(delegatedBalance);
 
    // TODO: submit cast_vote contract call via Stellar SDK
    // On-chain failure should return 502 before reaching this point.
@@ -130,7 +159,10 @@ export async function castKeyProposalVote(
          voter: wallet,
          optionIndex,
          option: options[optionIndex],
-         weight,
+         ownWeight: ownWeightStr,
+         delegatedWeight: delegatedWeightStr,
+         totalWeight: weightStr,
+         delegatorCount,
       },
       'Submitting cast_vote contract call'
    );
@@ -142,21 +174,24 @@ export async function castKeyProposalVote(
             proposalId,
             voter: wallet,
             optionIndex,
-            weight: new Decimal(weight),
+            weight: new Decimal(weightStr),
          },
       }),
+      // Use the correct GOVERNANCE_VOTE_CAST activity type (#933).
       prisma.activity.create({
          data: {
-            type: 'GOVERNANCE_PROPOSAL_CREATED',
+            type: 'GOVERNANCE_VOTE_CAST' as any,
             actor: wallet,
             creatorId: keyId,
             payload: {
                keyId,
                proposalId,
-               action: 'vote_cast',
                optionIndex,
                option: options[optionIndex],
-               weight,
+               ownWeight: ownWeightStr,
+               delegatedWeight: delegatedWeightStr,
+               totalWeight: weightStr,
+               delegatorCount,
             },
          },
       }),
@@ -166,6 +201,9 @@ export async function castKeyProposalVote(
       proposalId,
       optionIndex,
       option: options[optionIndex],
-      weight,
+      weight: weightStr,
+      ownWeight: ownWeightStr,
+      delegatedWeight: delegatedWeightStr,
+      delegatorCount,
    };
 }

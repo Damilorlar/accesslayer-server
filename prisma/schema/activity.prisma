@@ -17,6 +17,18 @@ enum ActivityType {
   GOVERNANCE_PROPOSAL_CREATED
   TIMELOCK_LOCKUP_PROPOSED
   CIRCUIT_BREAKER_THRESHOLD_UPDATED
+  /// On-chain event emitted when a key is flagged for inactivity sunset (#931).
+  KEY_SUNSET_FLAGGED
+  /// On-chain event emitted when a new staking NFT is minted (#932).
+  STAKE_NFT_MINTED
+  /// On-chain event emitted when a staking NFT is transferred to a new holder (#932).
+  STAKE_NFT_TRANSFERRED
+  /// A governance vote was cast, optionally with delegated weight (#933).
+  GOVERNANCE_VOTE_CAST
+  /// A wallet set or updated its vote delegate (#933).
+  GOVERNANCE_DELEGATION_SET
+  /// A wallet revoked its active vote delegation (#933).
+  GOVERNANCE_DELEGATION_REVOKED
 }
 
 model Activity {
