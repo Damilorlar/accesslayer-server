@@ -8,6 +8,7 @@ import {
    httpGetAuditLog,
 } from './admin.controllers';
 import { httpSyncKeyState } from './key-sync.controllers';
+import aclRouter from '../acl/acl.routes';
 import { getKeySnapshot, KeySnapshotNotFoundError } from './key-snapshot.service';
 import { createAuditEntry } from './audit-log.service';
 import { invalidateProtocolStatusCache } from '../protocol/protocol.routes';
@@ -115,6 +116,10 @@ adminRouter.post('/keys/:keyId/resume', adminGuard, httpSetKeyTradingPaused);
 adminRouter.post('/keys/:keyId/sync', adminGuard, httpSyncKeyState);
 adminRouter.patch('/protocol-fee', adminGuard, httpUpdateProtocolFee);
 adminRouter.get('/audit-log', adminGuard, httpGetAuditLog);
+
+// ── ACL whitelist management (#966) ───────────────────────────
+// GET/POST /admin/acl, DELETE /admin/acl/:contractId, GET /admin/acl/history
+adminRouter.use('/acl', aclRouter);
 
 /**
  * GET /api/v1/admin/analytics?from=&to=
