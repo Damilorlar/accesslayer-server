@@ -25,7 +25,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import {
-   sendNotFound,
    sendSuccess,
    sendValidationError,
    zodIssuesToDetails,
