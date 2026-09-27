@@ -2,8 +2,8 @@ import request from 'supertest';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import adminRouter from '../admin.routes';
-import { errorHandler } from '../../middlewares/error.middleware';
-import { prisma } from '../../utils/prisma.utils';
+import { errorHandler } from '../../../middlewares/error.middleware';
+import { prisma } from '../../../utils/prisma.utils';
 
 const app = express();
 app.use(express.json());

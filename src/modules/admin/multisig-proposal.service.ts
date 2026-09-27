@@ -7,6 +7,7 @@ import { logger } from '../../utils/logger.utils';
 import { envConfig } from '../../config';
 import { emitAuditEvent } from '../../utils/audit.utils';
 import { createAuditEntry } from './audit-log.service';
+import { Prisma } from '@prisma/client';
 
 export const DEFAULT_MULTISIG_THRESHOLD = 2;
 export const DEFAULT_MULTISIG_TOTAL_SIGNERS = 3;
@@ -513,7 +514,7 @@ async function executeProposal(
   proposal: {
     proposalId: string;
     changeType: string;
-    payload: Record<string, unknown>;
+    payload: Prisma.JsonValue;
   },
   _executor: string
 ): Promise<void> {
@@ -537,7 +538,7 @@ function serializeProposal(
     id: string;
     proposalId: string;
     changeType: string;
-    payload: Record<string, unknown>;
+    payload: Prisma.JsonValue;
     status: string;
     threshold: number;
     totalSigners: number;
@@ -561,7 +562,7 @@ function serializeProposal(
     id: proposal.id,
     proposalId: proposal.proposalId,
     changeType: proposal.changeType,
-    payload: proposal.payload,
+    payload: (proposal.payload as Record<string, unknown>) ?? {},
     status: proposal.status,
     threshold: proposal.threshold,
     totalSigners: proposal.totalSigners,
