@@ -8,6 +8,13 @@ import {
    httpGetAuditLog,
 } from './admin.controllers';
 import { httpSyncKeyState } from './key-sync.controllers';
+import {
+   httpCreateMultisigProposal,
+   httpGetMultisigProposalQueue,
+   httpGetMultisigProposalById,
+   httpSignMultisigProposal,
+   httpRejectMultisigProposal,
+} from './multisig-proposal.controllers';
 import aclRouter from '../acl/acl.routes';
 import { getKeySnapshot, KeySnapshotNotFoundError } from './key-snapshot.service';
 import { createAuditEntry } from './audit-log.service';
@@ -102,9 +109,9 @@ function serializeTimelockAction(action: any) {
             : null,
       ...(countdownMs !== null
          ? {
-             countdownMs,
-             countdown: formatCountdown(countdownMs),
-          }
+              countdownMs,
+              countdown: formatCountdown(countdownMs),
+           }
          : {}),
    };
 }
@@ -118,6 +125,46 @@ adminRouter.post('/keys/:keyId/resume', adminGuard, httpSetKeyTradingPaused);
 adminRouter.post('/keys/:keyId/sync', adminGuard, httpSyncKeyState);
 adminRouter.patch('/protocol-fee', adminGuard, httpUpdateProtocolFee);
 adminRouter.get('/audit-log', adminGuard, httpGetAuditLog);
+
+/**
+ * GET /api/v1/admin/proposals
+ *
+ * List all multisig proposals with pagination and optional status filter.
+ * Requires admin JWT.
+ */
+adminRouter.get('/proposals', adminGuard, httpGetMultisigProposalQueue);
+
+/**
+ * POST /api/v1/admin/proposals
+ *
+ * Create a new multisig proposal requiring multi-sig approval.
+ * Requires admin JWT.
+ */
+adminRouter.post('/proposals', adminGuard, httpCreateMultisigProposal);
+
+/**
+ * GET /api/v1/admin/proposals/:id
+ *
+ * Get detailed information for a single multisig proposal including all signatures.
+ * Requires admin JWT.
+ */
+adminRouter.get('/proposals/:id', adminGuard, httpGetMultisigProposalById);
+
+/**
+ * POST /api/v1/admin/proposals/:id/sign
+ *
+ * Submit a signature/approval for a multisig proposal.
+ * Requires admin JWT and valid signer from ADMIN_MULTISIG_WALLETS.
+ */
+adminRouter.post('/proposals/:id/sign', adminGuard, httpSignMultisigProposal);
+
+/**
+ * POST /api/v1/admin/proposals/:id/reject
+ *
+ * Reject a multisig proposal.
+ * Requires admin JWT and valid signer from ADMIN_MULTISIG_WALLETS.
+ */
+adminRouter.post('/proposals/:id/reject', adminGuard, httpRejectMultisigProposal);
 
 // ── ACL whitelist management (#966) ───────────────────────────
 // GET/POST /admin/acl, DELETE /admin/acl/:contractId, GET /admin/acl/history
