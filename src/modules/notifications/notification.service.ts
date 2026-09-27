@@ -126,6 +126,8 @@ async function buildKeyDeprecated(
          deprecatedAt: true,
          buybackPriceXlm: true,
          buybackExpiresAt: true,
+         reason: true,
+         successorKeyId: true,
       },
    });
 
@@ -139,6 +141,8 @@ async function buildKeyDeprecated(
             read: isRead(createdAt, lastReadAt),
             payload: {
                keyId: key.id,
+               reason: key.reason ?? null,
+               successorKeyId: key.successorKeyId ?? null,
                buybackPriceXlm:
                   key.buybackPriceXlm !== null &&
                   key.buybackPriceXlm !== undefined

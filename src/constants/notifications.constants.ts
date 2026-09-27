@@ -26,6 +26,7 @@ export const REDIS_KEYS = {
    priceMovedSet: 'price_moved:keys',
    priceMovedDelivered: (keyId: string) => `price_moved:delivered:${keyId}`,
    keySunsetEvent: (eventId: string) => `key_sunset:dispatch:${eventId}`,
+   keyDeprecationEvent: (eventId: string) => `key_deprecation:dispatch:${eventId}`,
 } as const;
 
 export const KEY_FEES_CACHE_TTL_SECONDS = 60;
