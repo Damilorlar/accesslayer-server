@@ -8,6 +8,7 @@ import {
    httpGetAuditLog,
 } from './admin.controllers';
 import { httpSyncKeyState } from './key-sync.controllers';
+import aclRouter from '../acl/acl.routes';
 import { getKeySnapshot, KeySnapshotNotFoundError } from './key-snapshot.service';
 import { createAuditEntry } from './audit-log.service';
 import { invalidateProtocolStatusCache } from '../protocol/protocol.routes';
@@ -16,6 +17,8 @@ import {
    getPlatformAnalytics,
 } from '../keys/key-analytics.service';
 import { getProtocolLpOverview } from './lp-overview.service';
+import { flashLoanViolationsQuerySchema } from './flash-loan-violations.schemas';
+import { getFlashLoanViolations } from './flash-loan-violations.service';
 import {
    adminGuard,
    AdminRequest,
@@ -116,6 +119,40 @@ adminRouter.post('/keys/:keyId/resume', adminGuard, httpSetKeyTradingPaused);
 adminRouter.post('/keys/:keyId/sync', adminGuard, httpSyncKeyState);
 adminRouter.patch('/protocol-fee', adminGuard, httpUpdateProtocolFee);
 adminRouter.get('/audit-log', adminGuard, httpGetAuditLog);
+
+// ── ACL whitelist management (#966) ───────────────────────────
+// GET/POST /admin/acl, DELETE /admin/acl/:contractId, GET /admin/acl/history
+adminRouter.use('/acl', aclRouter);
+
+/**
+ * GET /api/v1/admin/flash-loan-violations?limit=&offset=&include_cleared=&recent_limit=
+ *
+ * Wallets that triggered the on-chain flash loan guard, sorted by violation
+ * frequency (most attempts first) over the cooldown window, with their alert
+ * and auto-suspension state plus the most recent indexed attempts (#938).
+ */
+adminRouter.get(
+   '/flash-loan-violations',
+   adminGuard,
+   async (req: AdminRequest, res, next) => {
+      const parsed = flashLoanViolationsQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+         sendValidationError(
+            res,
+            'Invalid flash loan violations query',
+            zodIssuesToDetails(parsed.error.issues)
+         );
+         return;
+      }
+
+      try {
+         sendSuccess(res, await getFlashLoanViolations(parsed.data));
+      } catch (error) {
+         logger.error({ error }, 'Flash loan violations lookup failed');
+         next(error);
+      }
+   }
+);
 
 /**
  * GET /api/v1/admin/analytics?from=&to=
