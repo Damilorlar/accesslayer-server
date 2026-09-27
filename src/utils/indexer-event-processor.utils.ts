@@ -126,3 +126,66 @@ export async function processIndexerChainEvents<T extends IndexerChainEvent>(
       'Indexer batch completed'
    );
 }
+
+export interface CheckpointCallbacks {
+   /** Called after all events for a ledger are processed. Receives the ledger sequence, last event index, and event IDs. */
+   onLedgerComplete: (
+      ledger: number,
+      lastEventIndex: number,
+      eventIds: string[]
+   ) => Promise<void>;
+}
+
+/**
+ * Dedupes, groups by ledger, and processes events sequentially.
+ *
+ * After all events for a ledger are processed, calls `onLedgerComplete`
+ * so the caller can write a checkpoint atomically.
+ *
+ * Events without a `ledger` field are processed but not checkpointed.
+ */
+export async function processIndexerChainEventsWithCheckpointing<
+   T extends IndexerChainEvent
+>(
+   events: T[],
+   handler: (event: T) => Promise<void>,
+   callbacks: CheckpointCallbacks
+): Promise<void> {
+   const uniqueEvents = dedupeChainEvents(events);
+
+   // Group events by ledger
+   const byLedger = new Map<number, T[]>();
+   const noLedger: T[] = [];
+
+   for (const event of uniqueEvents) {
+      if (event.ledger !== undefined) {
+         const group = byLedger.get(event.ledger) || [];
+         group.push(event);
+         byLedger.set(event.ledger, group);
+      } else {
+         noLedger.push(event);
+      }
+   }
+
+   // Process events without a ledger first (no checkpoint possible)
+   for (const event of noLedger) {
+      await processIndexerChainEvent(event, handler);
+   }
+
+   // Process each ledger group
+   const sortedLedgers = [...byLedger.keys()].sort((a, b) => a - b);
+
+   for (const ledger of sortedLedgers) {
+      const ledgerEvents = byLedger.get(ledger)!;
+      const eventIds: string[] = [];
+
+      for (const event of ledgerEvents) {
+         await processIndexerChainEvent(event, handler);
+         eventIds.push(getChainEventId(event));
+      }
+
+      // Checkpoint after all events for this ledger are processed
+      const lastEventIndex = ledgerEvents[ledgerEvents.length - 1].eventIndex;
+      await callbacks.onLedgerComplete(ledger, lastEventIndex, eventIds);
+   }
+}

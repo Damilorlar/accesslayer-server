@@ -39,10 +39,15 @@ export const ActivityItemSchema = z.object({
    id: z.string(),
    type: z.string(),
    actor: z.string(),
+   wallet: z.string().optional(),
+   action: z.string().optional(),
+   creator_wallet: z.string().nullable().optional(),
    creatorId: z.string().nullable(),
+   key_amount: z.number().optional(),
    target: z.string().nullable(),
    payload: z.any(),
-   createdAt: z.date(),
+   createdAt: z.union([z.date(), z.string()]),
+   created_at: z.string().optional(),
 });
 
 export const ActivityFeedResponseSchema = z.object({

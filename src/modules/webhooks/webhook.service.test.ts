@@ -137,6 +137,7 @@ describe('dispatchWebhookEvent', () => {
    beforeEach(() => {
       jest.useFakeTimers();
       global.fetch = jest.fn();
+      jest.spyOn(Math, 'random').mockReturnValue(0);
    });
 
    afterEach(() => {
@@ -313,7 +314,14 @@ describe('dispatchWebhookEvent', () => {
          }),
          'Webhook delivery failed, retrying'
       );
-      expect(logger.error).toHaveBeenCalledWith(
+      const exhaustionLogCalls = (logger.error as jest.Mock).mock.calls.filter(
+         ([, message]) =>
+            message === 'Webhook delivery exhausted all retries, flagged as failing'
+      );
+      expect(exhaustionLogCalls).toHaveLength(1);
+
+      const [exhaustionLogFields] = exhaustionLogCalls[0];
+      expect(exhaustionLogFields).toEqual(
          expect.objectContaining({
             webhook_id: 'wh-1',
             creator_id: 'creator-1',
@@ -321,9 +329,10 @@ describe('dispatchWebhookEvent', () => {
             total_attempts: envConfig.WEBHOOK_RETRY_MAX_ATTEMPTS,
             last_error_code: 'Network error',
             flagged_at: expect.any(String),
-         }),
-         'Webhook delivery exhausted all retries, flagged as failing'
+         })
       );
+      expect(exhaustionLogFields.callback_url).toBeUndefined();
+      expect(exhaustionLogFields.callbackUrl).toBeUndefined();
 
       // Verify attempt log was emitted for every retry attempt (success: false, response_status: null)
       for (let attempt = 1; attempt <= envConfig.WEBHOOK_RETRY_MAX_ATTEMPTS; attempt++) {

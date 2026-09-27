@@ -2,6 +2,7 @@ import { prisma } from '../../utils/prisma.utils';
 import { envConfig } from '../../config';
 import { logger } from '../../utils/logger.utils';
 import { CreateAlertInput } from './alert.schemas';
+import { truncateWallet } from '../../utils/wallet-display.utils';
 
 export type PriceMovement = {
    creatorId: string;
@@ -52,7 +53,7 @@ export async function createAlert(input: CreateAlertInput) {
          direction: alert.direction,
          target_price: toNumber(alert.targetPrice),
          registered_at: alert.createdAt,
-         wallet_address: maskWalletAddress(alert.walletAddress),
+         wallet_address: truncateWallet(alert.walletAddress),
       },
       'Price alert registered'
    );
@@ -93,7 +94,7 @@ export async function deleteAlert(
          alert_id: existing.id,
          creator_id: existing.creatorId,
          cancelled_at: new Date(),
-         wallet_address: maskWalletAddress(existing.walletAddress),
+         wallet_address: truncateWallet(existing.walletAddress),
       },
       'Price alert cancelled'
    );
@@ -105,10 +106,7 @@ function toNumber(value: number | string | { toString(): string }): number {
    return typeof value === 'number' ? value : Number(value.toString());
 }
 
-function maskWalletAddress(address: string): string {
-   if (address.length <= 8) return address;
-   return `${address.slice(0, 4)}***${address.slice(-4)}`;
-}
+
 
 function maskCallbackUrl(callbackUrl: string): string {
    try {

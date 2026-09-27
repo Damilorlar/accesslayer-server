@@ -11,6 +11,7 @@ export const CREATOR_STATS_FIELDS = [
    'holderCount',
    'totalSupply',
    'totalVolume',
+   'currentPrice',
    'lastActivityAt',
 ] as const;
 
@@ -27,6 +28,8 @@ export interface PublicCreatorStats {
    holder_count: number;
    totalSupply: number;
    totalVolume: number;
+   /** Current key price in stroops as a string; null when no trade has occurred. */
+   currentPrice?: string | null;
    lastActivityAt?: Date;
 }
 
@@ -42,6 +45,7 @@ const CREATOR_STATS_FIELD_MAP = {
    holderCount: 'holderCount',
    totalSupply: 'totalSupply',
    totalVolume: 'totalVolume',
+   currentPrice: 'currentPrice',
    lastActivityAt: 'lastActivityAt',
 } as const satisfies Record<CreatorStatsField, keyof CreatorMetrics>;
 
@@ -56,7 +60,7 @@ const CREATOR_STATS_FIELD_MAP = {
  *
  * @example
  * mapPublicCreatorStats({ holderCount: 10, totalSupply: 100, totalVolume: 500 })
- * // => { holderCount: 10, holder_count: 10, totalSupply: 100, totalVolume: 500 }
+ * // => { holderCount: 10, holder_count: 10, totalSupply: 100, totalVolume: 500, currentPrice: null }
  */
 export function mapPublicCreatorStats(
    metrics: CreatorMetrics
@@ -67,6 +71,7 @@ export function mapPublicCreatorStats(
       holder_count: count,
       totalSupply: metrics[CREATOR_STATS_FIELD_MAP.totalSupply],
       totalVolume: metrics[CREATOR_STATS_FIELD_MAP.totalVolume],
+      currentPrice: metrics[CREATOR_STATS_FIELD_MAP.currentPrice] ?? null,
       ...(metrics[CREATOR_STATS_FIELD_MAP.lastActivityAt] !== undefined
          ? {
               lastActivityAt: metrics[CREATOR_STATS_FIELD_MAP.lastActivityAt],

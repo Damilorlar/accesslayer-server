@@ -1,17 +1,47 @@
+import { httpDistributeDividend } from '../dividends/dividend.controllers';
+import { requireJwtAuth } from '../../middlewares/jwt-auth.middleware';
 import { Router } from 'express';
+import { sendNotFound, sendSuccess } from '../../utils/api-response.utils';
 import {
    httpListCreators,
-   httpGetCreator,
+   httpGetCreatorPortfolioKeys,
    httpGetCreatorStats,
    httpGetTrendingCreators,
+   httpGetCreatorLeaderboard,
+   httpGetCreatorAnalytics,
 } from './creators.controllers';
 import { httpGetCreatorHolders } from './creator-holders.controller';
+import { httpGetVolumeLeaderboard } from './creator-leaderboard-volume.controller';
+import {
+   httpGetCreatorPublicProfile,
+   httpGetCreatorIssuedKeys,
+} from './creator-public-profile.controller';
 import { cacheControl } from '../../middlewares/cache-control.middleware';
 import { CREATOR_PUBLIC_ROUTE_CACHE_PRESETS } from '../../constants/creator-public-cache.constants';
 import { CREATOR_PUBLIC_ROUTE_NAMES } from '../../constants/creator-public-routes.constants';
 import { createCreatorReadMetricsMiddleware } from '../../utils/creator-read-metrics.utils';
 import { normalizeTrailingSlash } from '../../middlewares/trailing-slash-normalizer.middleware';
 import { validateCreatorParam } from '../../middlewares/creator-param.middleware';
+import { requireCreatorProfileOwnership } from '../../middlewares/wallet-ownership.middleware';
+import { requireStellarSignature } from '../../middlewares/stellar-signature.middleware';
+import { buyKeyRateLimit } from '../../middlewares/wallet-rate-limit.middleware';
+import { validateBody } from '../../middlewares/validate-body.middleware';
+import { httpBuyCreatorKey, buySchema } from '../creator/buy.controller';
+import { httpSellCreatorKey, sellSchema } from '../creator/sell.controller';
+import {
+   httpCreatePost,
+   httpListPosts,
+   postSchema,
+} from '../creator/post.controller';
+import { requireKeyCreator } from '../../middlewares/jwt-auth.middleware';
+import {
+   getCreatorRevenue,
+   KeyNotFoundError as RevenueKeyNotFoundError,
+} from '../creator/creator-revenue.service';
+import { httpGetCreatorDashboard } from '../creator/creator-dashboard.controller';
+import { httpCreateCreatorProposal } from '../creator/creator-proposals.controller';
+import { createProposalSchema } from '../creator/creator-proposals.schemas';
+import reputationRouter from '../creator/creator-reputation.routes';
 
 const creatorsRouter = Router();
 
@@ -19,6 +49,40 @@ const creatorsRouter = Router();
 // GET /api/v1/creators/ reaches the same handler as GET /api/v1/creators.
 // Scoped to this router to avoid side-effects on other route groups.
 creatorsRouter.use(normalizeTrailingSlash);
+
+creatorsRouter.post(
+   '/:id/buy',
+   validateCreatorParam('id'),
+   requireStellarSignature(),
+   buyKeyRateLimit,
+   validateBody(buySchema),
+   httpBuyCreatorKey
+);
+/**
+ * POST /api/v1/creators/:id/sell
+ *
+ * Sell keys from the authenticated wallet's position. Enforces self-custody
+ * freeze (403 when frozen) and server-side slippage protection: the
+ * submitted min_price is validated against the current bonding-curve price
+ * inside the same transaction as the trade execution (#884, #885).
+ */
+creatorsRouter.post(
+   '/:id/sell',
+   validateCreatorParam('id'),
+   requireStellarSignature(),
+   buyKeyRateLimit,
+   validateBody(sellSchema),
+   httpSellCreatorKey
+);
+creatorsRouter.post('/:id/dividends', requireJwtAuth, httpDistributeDividend);
+creatorsRouter.get('/:id/posts', validateCreatorParam('id'), httpListPosts);
+creatorsRouter.post(
+   '/:id/posts',
+   validateCreatorParam('id'),
+   requireStellarSignature(),
+   validateBody(postSchema),
+   httpCreatePost
+);
 
 /**
  * GET /api/v1/creators
@@ -92,10 +156,87 @@ creatorsRouter.get(
 );
 
 /**
+ * GET /api/v1/creators/:id/analytics
+ *
+ * Returns buy volume and unique buyer count for the authenticated creator.
+ * Protected route — requires wallet ownership via x-wallet-address header.
+ */
+creatorsRouter.get(
+   '/:id/analytics',
+   validateCreatorParam('id'),
+   requireCreatorProfileOwnership('id'),
+   httpGetCreatorAnalytics
+);
+// 405 handler for /:id/analytics
+creatorsRouter.all('/:id/analytics', (_req, res) => {
+   res.set('Allow', 'GET').sendStatus(405);
+});
+
+/**
+ * GET /api/v1/creators/leaderboard
+ *
+ * List creators ranked by holder count descending, tie-broken
+ * alphabetically by creator address.
+ */
+creatorsRouter.get(
+   '/leaderboard',
+   createCreatorReadMetricsMiddleware('list'),
+   httpGetCreatorLeaderboard
+);
+
+/**
+ * GET /api/v1/creators/leaderboard/volume
+ *
+ * Top 20 creator keys ranked by total trading volume (buys + sells) over a
+ * rolling window (default 7 days, LEADERBOARD_VOLUME_WINDOW_DAYS). Cached in
+ * Redis for LEADERBOARD_VOLUME_CACHE_TTL_SECONDS (default 5 minutes) and
+ * invalidated whenever a new trade is indexed.
+ */
+creatorsRouter.get(
+   '/leaderboard/volume',
+   createCreatorReadMetricsMiddleware('list'),
+   httpGetVolumeLeaderboard
+);
+
+/**
+ * GET /api/v1/creators/:id/keys
+ *
+ * Returns a cursor-paginated list of keys issued by the creator identified by
+ * :id (profile ID or handle). Stats include total keys, total holders, and
+ * total trading volume across all keys.
+ * Public endpoint with no authentication required.
+ */
+creatorsRouter.get(
+   '/:id/keys',
+   validateCreatorParam('id'),
+   createCreatorReadMetricsMiddleware('detail'),
+   cacheControl(
+      CREATOR_PUBLIC_ROUTE_CACHE_PRESETS[CREATOR_PUBLIC_ROUTE_NAMES.GET_KEYS]
+   ),
+   httpGetCreatorIssuedKeys
+);
+// 405 handler for /:id/keys
+creatorsRouter.all('/:id/keys', (_req, res) => {
+   res.set('Allow', 'GET').sendStatus(405);
+});
+
+/**
+ * GET /api/v1/creators/:wallet/keys  (legacy — wallet address lookup)
+ *
+ * Returns keys owned by a wallet. Superseded by GET /creators/:id/keys for
+ * profile-ID / handle-based lookups, but kept for backward compatibility.
+ */
+creatorsRouter.get('/:wallet/portfolio-keys', httpGetCreatorPortfolioKeys);
+creatorsRouter.all('/:wallet/portfolio-keys', (_req, res) => {
+   res.set('Allow', 'GET').sendStatus(405);
+});
+
+/**
  * GET /api/v1/creators/:id
  *
- * Get public details for a specific creator.
- * Public endpoint with 5-minute cache.
+ * Returns public profile metadata for a creator together with social stats:
+ * total holders, total trading volume, and follower count.
+ * Public endpoint with 5-minute cache. No authentication required.
  */
 creatorsRouter.get(
    '/:id',
@@ -104,11 +245,73 @@ creatorsRouter.get(
    cacheControl(
       CREATOR_PUBLIC_ROUTE_CACHE_PRESETS[CREATOR_PUBLIC_ROUTE_NAMES.GET_PROFILE]
    ),
-   httpGetCreator
+   httpGetCreatorPublicProfile
 );
 // 405 handler for /:id
 creatorsRouter.all('/:id', (_req, res) => {
    res.set('Allow', 'GET').sendStatus(405);
 });
+
+/**
+ * GET /api/v1/creators/:keyId/revenue
+ *
+ * Creator revenue summary: total royalties earned and trade count.
+ * Requires JWT matching the key creator.
+ */
+creatorsRouter.get(
+   '/:keyId/revenue',
+   requireKeyCreator('keyId'),
+   async (req, res, next) => {
+      try {
+         const keyId = Array.isArray(req.params.keyId)
+            ? req.params.keyId[0]
+            : req.params.keyId;
+         sendSuccess(res, await getCreatorRevenue(keyId));
+      } catch (error) {
+         if (error instanceof RevenueKeyNotFoundError) {
+            sendNotFound(res, 'Key');
+            return;
+         }
+         next(error);
+      }
+   }
+);
+creatorsRouter.all('/:keyId/revenue', (_req, res) => {
+   res.set('Allow', 'GET').sendStatus(405);
+});
+
+/**
+ * GET /api/v1/creators/:keyId/dashboard
+ *
+ * Creator dashboard summary: key stats, revenue, and holder metrics in one call.
+ * Requires JWT matching the key creator. Cached in Redis for 2 minutes.
+ */
+creatorsRouter.get(
+   '/:keyId/dashboard',
+   requireKeyCreator('keyId'),
+   httpGetCreatorDashboard
+);
+creatorsRouter.all('/:keyId/dashboard', (_req, res) => {
+   res.set('Allow', 'GET').sendStatus(405);
+});
+
+/**
+ * POST /api/v1/creators/:keyId/proposals
+ *
+ * Proposal creation: submits create_proposal contract call and persists proposal record.
+ * Requires JWT matching the key creator.
+ */
+creatorsRouter.post(
+   '/:keyId/proposals',
+   requireKeyCreator('keyId'),
+   validateBody(createProposalSchema),
+   httpCreateCreatorProposal
+);
+creatorsRouter.all('/:keyId/proposals', (_req, res) => {
+   res.set('Allow', 'POST').sendStatus(405);
+});
+
+// Mount reputation router for :wallet/reputation endpoints
+creatorsRouter.use(reputationRouter);
 
 export default creatorsRouter;

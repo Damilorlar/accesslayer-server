@@ -1,103 +1,97 @@
 import supertest from 'supertest';
 import app from '../../../app';
 import { prisma } from '../../../utils/prisma.utils';
+import {
+   seedCreatorMarketFixture,
+   upsertCreatorPriceSnapshot,
+} from '../../../utils/test/seeded-creator-fixtures.utils';
 
 describe('GET /api/v1/wallets/:address/holdings - multiple price snapshot updates', () => {
-  const WALLET_ADDRESS = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
-  const USER_ID = 'wallet-multi-snap-user';
-  const CREATOR_ID = 'wallet-multi-snap-creator';
-  const HOLDING_BALANCE = 5.0; // 5 keys held
+   const WALLET_ADDRESS =
+      'GCZURJAWEEAYDCIIUFMCGVDIKBASNKQQ7ZCX33BP2DZHFF52SG6BLW6J';
+   const HOLDING_BALANCE = 5.0; // 5 keys held
+   const SEED_PREFIX = 'wallet-multi-snap';
 
-  beforeAll(async () => {
-    // Clean up database tables to avoid tests leaking into each other
-    await prisma.keyOwnership.deleteMany({});
-    await prisma.creatorPriceSnapshot.deleteMany({});
-    await prisma.creatorProfile.deleteMany({});
-    await prisma.user.deleteMany({});
+   let creatorId = '';
+   let userId = '';
 
-    // Seed a User
-    await prisma.user.create({
-      data: {
-        id: USER_ID,
-        email: 'wallet-multi-snap@example.test',
-        passwordHash: 'dummy-hash',
-        firstName: 'Wallet',
-        lastName: 'Multi Snap',
-      },
-    });
+   beforeAll(async () => {
+      // Clean up database tables to avoid tests leaking into each other
+      await prisma.keyOwnership.deleteMany({
+         where: { ownerAddress: WALLET_ADDRESS },
+      });
+      await prisma.creatorPriceSnapshot.deleteMany({
+         where: { creatorId: { startsWith: SEED_PREFIX } },
+      });
+      await prisma.creatorProfile.deleteMany({
+         where: { handle: { startsWith: `${SEED_PREFIX}-handle-` } },
+      });
+      await prisma.user.deleteMany({
+         where: { id: { startsWith: `${SEED_PREFIX}-user-` } },
+      });
 
-    // Seed a Creator
-    await prisma.creatorProfile.create({
-      data: {
-        id: CREATOR_ID,
-        userId: USER_ID,
-        handle: 'wallet_multi_snap_creator',
-        displayName: 'Wallet Multi Snap Creator',
-      },
-    });
+      const seededCreator = await seedCreatorMarketFixture(prisma, 1, {
+         prefix: SEED_PREFIX,
+         displayName: 'Wallet Multi Snap Creator',
+         walletAddress: WALLET_ADDRESS,
+         balance: HOLDING_BALANCE,
+      });
 
-    // Seed KeyOwnership
-    await prisma.keyOwnership.create({
-      data: {
-        ownerAddress: WALLET_ADDRESS,
-        creatorId: CREATOR_ID,
-        balance: HOLDING_BALANCE,
-      },
-    });
-  });
+      creatorId = seededCreator.creatorId;
+      userId = seededCreator.userId;
+   });
 
-  afterAll(async () => {
-    // Clean up seeded database tables
-    await prisma.keyOwnership.deleteMany({});
-    await prisma.creatorPriceSnapshot.deleteMany({});
-    await prisma.creatorProfile.deleteMany({});
-    await prisma.user.deleteMany({});
-  });
+   afterAll(async () => {
+      // Clean up seeded database tables
+      await prisma.keyOwnership.deleteMany({
+         where: { ownerAddress: WALLET_ADDRESS },
+      });
+      if (creatorId) {
+         await prisma.creatorPriceSnapshot.deleteMany({
+            where: { creatorId },
+         });
+         await prisma.creatorProfile.deleteMany({ where: { id: creatorId } });
+      }
+      if (userId) {
+         await prisma.user.deleteMany({ where: { id: userId } });
+      }
+      await prisma.$disconnect();
+   });
 
-  it('should reflect the correct total_value after multiple price snapshot updates', async () => {
-    // First snapshot update
-    await prisma.creatorPriceSnapshot.upsert({
-      where: { creatorId: CREATOR_ID },
-      update: { currentPrice: 100n },
-      create: { creatorId: CREATOR_ID, currentPrice: 100n },
-    });
+   it('should reflect the correct total_value after multiple price snapshot updates', async () => {
+      // First snapshot update
+      await upsertCreatorPriceSnapshot(prisma, creatorId, 100n);
 
-    let res = await supertest(app).get(`/api/v1/wallets/${WALLET_ADDRESS}/holdings`);
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    let items = res.body.data.items;
-    expect(items).toHaveLength(1);
-    expect(items[0].current_price).toBe('100');
-    expect(items[0].total_value).toBe('500');
+      let res = await supertest(app).get(
+         `/api/v1/wallets/${WALLET_ADDRESS}/holdings`
+      );
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      let items = res.body.data.items;
+      expect(items).toHaveLength(1);
+      expect(items[0].current_price).toBe('100');
+      expect(items[0].total_value).toBe('500');
 
-    // Second snapshot update
-    await prisma.creatorPriceSnapshot.upsert({
-      where: { creatorId: CREATOR_ID },
-      update: { currentPrice: 250n },
-      create: { creatorId: CREATOR_ID, currentPrice: 250n },
-    });
+      // Second snapshot update
+      await upsertCreatorPriceSnapshot(prisma, creatorId, 250n);
 
-    res = await supertest(app).get(`/api/v1/wallets/${WALLET_ADDRESS}/holdings`);
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    items = res.body.data.items;
-    expect(items).toHaveLength(1);
-    expect(items[0].current_price).toBe('250');
-    expect(items[0].total_value).toBe('1250');
+      res = await supertest(app).get(`/api/v1/wallets/${WALLET_ADDRESS}/holdings`);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      items = res.body.data.items;
+      expect(items).toHaveLength(1);
+      expect(items[0].current_price).toBe('250');
+      expect(items[0].total_value).toBe('1250');
 
-    // Third snapshot update
-    await prisma.creatorPriceSnapshot.upsert({
-      where: { creatorId: CREATOR_ID },
-      update: { currentPrice: 300n },
-      create: { creatorId: CREATOR_ID, currentPrice: 300n },
-    });
+      // Third snapshot update
+      await upsertCreatorPriceSnapshot(prisma, creatorId, 300n);
 
-    res = await supertest(app).get(`/api/v1/wallets/${WALLET_ADDRESS}/holdings`);
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    items = res.body.data.items;
-    expect(items).toHaveLength(1);
-    expect(items[0].current_price).toBe('300');
-    expect(items[0].total_value).toBe('1500');
-  });
+      res = await supertest(app).get(`/api/v1/wallets/${WALLET_ADDRESS}/holdings`);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      items = res.body.data.items;
+      expect(items).toHaveLength(1);
+      expect(items[0].current_price).toBe('300');
+      expect(items[0].total_value).toBe('1500');
+   });
 });

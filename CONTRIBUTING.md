@@ -13,6 +13,8 @@ Thanks for contributing to the backend for Access Layer, a Stellar-native creato
 
 ## Local setup
 
+For the complete walkthrough — prerequisites, environment file gotchas, database, migrations, seeding, and verification — follow the [Local Development Setup Guide](./docs/local-development-setup.md). The short version:
+
 1. Install Node.js 20+ and `pnpm`.
 2. Copy `.env.example` to `.env`.
 3. Install dependencies:

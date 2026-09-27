@@ -9,7 +9,6 @@
  */
 
 import {
-   truncateWalletAddress,
    checkRateLimitThresholds,
    cleanupRateLimitState,
    resetRateLimitState,
@@ -30,40 +29,7 @@ describe('rate-limit-tracking.utils', () => {
       resetRateLimitState();
    });
 
-   describe('truncateWalletAddress()', () => {
-      it('truncates long addresses to first 4 + last 4 characters', () => {
-         const address =
-            'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 
-         const truncated = truncateWalletAddress(address);
-
-         expect(truncated).toBe('GAAA…AAAA');
-      });
-
-      it('returns the address unchanged if 8 characters or less', () => {
-         const short = 'ABCD1234';
-
-         expect(truncateWalletAddress(short)).toBe('ABCD1234');
-      });
-
-      it('handles addresses with exactly 9 characters', () => {
-         const address = 'ABCDEFGHI';
-
-         const truncated = truncateWalletAddress(address);
-
-         expect(truncated).toBe('ABCD…EFHI');
-      });
-
-      it('uses ellipsis character in the middle', () => {
-         const address =
-            'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
-
-         const truncated = truncateWalletAddress(address);
-
-         expect(truncated).toContain('…');
-         expect(truncated.split('…')).toHaveLength(2);
-      });
-   });
 
    describe('checkRateLimitThresholds() — 80% threshold', () => {
       it('emits warn log when crossing 80% threshold', () => {

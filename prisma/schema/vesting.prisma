@@ -1,0 +1,16 @@
+// prisma/schema/vesting.prisma
+
+model VestingSchedule {
+  id            String   @id @default(cuid())
+  keyId         String
+  wallet        String
+  totalKeys     Decimal
+  startLedger   Int
+  endLedger     Int
+  claimedKeys   Decimal @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([keyId, wallet])
+  @@index([keyId, wallet])
+}

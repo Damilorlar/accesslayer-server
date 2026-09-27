@@ -29,7 +29,7 @@ const mockPrisma = prisma as unknown as {
 };
 
 const WALLET_ADDRESS =
-   'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+   'GCZURJAWEEAYDCIIUFMCGVDIKBASNKQQ7ZCX33BP2DZHFF52SG6BLW6J';
 const CREATOR_ID = 'creator-snap-test-1';
 
 describe('Holdings total_value recalculated after price snapshot update', () => {

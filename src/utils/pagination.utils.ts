@@ -18,12 +18,14 @@ export type OffsetPaginationMeta = {
    offset: number;
    total: number;
    hasMore: boolean;
+   searchTerm?: string;
 };
 
 export type OffsetPaginationMetaParams = {
    limit: number;
    offset: number;
    total: number;
+   searchTerm?: string;
 };
 
 export const buildPaginationMeta = ({
@@ -53,6 +55,7 @@ export const buildOffsetPaginationMeta = ({
    limit,
    offset,
    total,
+   searchTerm,
 }: OffsetPaginationMetaParams): OffsetPaginationMeta => {
    const safeLimit = Math.max(1, Math.floor(limit));
    const safeOffset = Math.max(0, Math.floor(offset));
@@ -63,6 +66,7 @@ export const buildOffsetPaginationMeta = ({
       offset: safeOffset,
       total: safeTotal,
       hasMore: safeOffset + safeLimit < safeTotal,
+      ...(searchTerm !== undefined ? { searchTerm } : {}),
    };
 };
 

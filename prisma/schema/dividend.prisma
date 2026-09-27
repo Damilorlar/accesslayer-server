@@ -1,0 +1,34 @@
+// prisma/schema/dividend.prisma
+
+model DividendDistribution {
+  id                String   @id @default(cuid())
+  creatorId         String
+  distributionDate  DateTime
+  totalAmountXlm    Decimal  @db.Decimal(20, 7)
+  holderCount       Int
+  perKeyAmountXlm   Decimal  @db.Decimal(20, 7)
+  ledger            Int
+  txHash            String
+  createdAt         DateTime @default(now())
+
+  claims            DividendClaim[]
+
+  @@unique([ledger, txHash])
+  @@index([creatorId])
+  @@index([distributionDate(sort: Desc)])
+}
+
+model DividendClaim {
+  id                String   @id @default(cuid())
+  distributionId    String
+  recipientAddress  String
+  amountXlm         Decimal  @db.Decimal(20, 7)
+  claimedAt         DateTime?
+  createdAt         DateTime @default(now())
+
+  distribution      DividendDistribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+
+  @@unique([distributionId, recipientAddress])
+  @@index([recipientAddress])
+  @@index([distributionId])
+}

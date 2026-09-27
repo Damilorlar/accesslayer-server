@@ -2,6 +2,7 @@ import { prisma } from '../../utils/prisma.utils';
 import { logger } from '../../utils/logger.utils';
 import { envConfig } from '../../config';
 import { maskWebhookUrl } from '../../utils/webhook-mask.utils';
+import { computeRetryDelay } from '../../utils/retry-delay.utils';
 import { buildWebhookPayload } from './webhook-payload.utils';
 import type {
     CreateWebhookInput,
@@ -193,6 +194,7 @@ async function attemptDelivery(
    attempt = 1
 ): Promise<void> {
    const maxAttempts = envConfig.WEBHOOK_RETRY_MAX_ATTEMPTS;
+   const maxDelayMs = 30_000;
    const startTime = Date.now();
    let responseStatus: number | null = null;
    let responseTimeMs = 0;
@@ -282,7 +284,11 @@ async function attemptDelivery(
       });
 
       if (attempt < maxAttempts) {
-         const delay = Math.pow(2, attempt) * 1000;
+         const delay = computeRetryDelay(
+            attempt,
+            envConfig.WEBHOOK_RETRY_BASE_DELAY_MS,
+            maxDelayMs
+         );
          logger.warn(
             {
                webhook_id: webhookId,

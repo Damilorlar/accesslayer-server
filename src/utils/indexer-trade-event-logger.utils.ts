@@ -10,10 +10,7 @@ export interface IndexerTradeEventLogFields {
    processed_at: Date;
 }
 
-function maskActorAddress(address: string): string {
-   if (address.length <= 8) return address;
-   return `${address.slice(0, 4)}...${address.slice(-4)}`;
-}
+import { truncateWallet } from './wallet-display.utils';
 
 /**
  * Emits a structured info log after a trade event is successfully written to
@@ -26,7 +23,7 @@ export function logIndexerTradeEvent(fields: IndexerTradeEventLogFields): void {
          event_type: fields.event_type,
          creator_id: fields.creator_id,
          ledger_sequence: fields.ledger_sequence,
-         actor_address: maskActorAddress(fields.actor_address),
+         actor_address: truncateWallet(fields.actor_address),
          amount: fields.amount,
          processed_at: fields.processed_at,
       }),
