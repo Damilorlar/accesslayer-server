@@ -182,7 +182,17 @@ export async function castKeyProposalVote(
       throw new DuplicateVoteError();
    }
 
-   const weight = String(balance);
+   const [delegatedBalance, delegatorCount] = await Promise.all([
+      getDelegatedVoteWeight(wallet, keyId),
+      prisma.voteDelegation.count({
+         where: { delegateeWallet: wallet, keyId, isActive: true },
+      }),
+   ]);
+
+   const totalWeight = ownBalance + delegatedBalance;
+   const weightStr = String(totalWeight);
+   const ownWeightStr = String(ownBalance);
+   const delegatedWeightStr = String(delegatedBalance);
    const option = options[optionIndex];
 
    // TODO: submit cast_vote contract call via Stellar SDK
@@ -195,7 +205,10 @@ export async function castKeyProposalVote(
          voter: wallet,
          optionIndex,
          option,
-         weight,
+         ownWeight: ownWeightStr,
+         delegatedWeight: delegatedWeightStr,
+         totalWeight: weightStr,
+         delegatorCount,
       },
       'Submitting cast_vote contract call'
    );
@@ -226,7 +239,7 @@ export async function castKeyProposalVote(
             totalVotingWeight: proposal.totalVotingWeight,
             results: proposal.results as Record<string, string>,
          },
-         weight,
+         weightStr,
          option
       );
 
@@ -258,7 +271,10 @@ export async function castKeyProposalVote(
                proposalId,
                optionIndex,
                option,
-               weight,
+               ownWeight: ownWeightStr,
+               delegatedWeight: delegatedWeightStr,
+               totalWeight: weightStr,
+               delegatorCount,
             },
          },
       });
