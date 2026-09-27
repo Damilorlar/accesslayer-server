@@ -18,15 +18,11 @@ const INVALID_ADDRESS = 'INVALID';
 
 describe('Multisig Proposal Queue API (#961)', () => {
   let admin1Token: string;
-  let admin2Token: string;
-  let admin3Token: string;
   let nonAdminToken: string;
 
   beforeAll(() => {
     const secret = process.env.JWT_SECRET || 'accesslayer_default_development_jwt_secret_key_32_bytes';
     admin1Token = jwt.sign({ sub: ADMIN_1, role: 'admin' }, secret);
-    admin2Token = jwt.sign({ sub: ADMIN_2, role: 'admin' }, secret);
-    admin3Token = jwt.sign({ sub: ADMIN_3, role: 'admin' }, secret);
     nonAdminToken = jwt.sign({ sub: NON_ADMIN, role: 'user' }, secret);
   });
 
