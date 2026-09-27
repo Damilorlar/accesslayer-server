@@ -27,6 +27,54 @@ export class OptionIndexOutOfRangeError extends Error {
    }
 }
 
+/**
+ * Denormalised tally currently stored on a GovernanceProposal row.
+ */
+export interface ProposalTotals {
+   totalVotingWeight: string;
+   results: Record<string, string>;
+}
+
+/**
+ * Parses a tally value (stored as a string, or `0` / undefined when unset)
+ * into a `bigint` for exact arithmetic. Totals and weights are integer key
+ * counts, so `BigInt` on the raw string avoids the precision loss that
+ * `Number(...)` would incur for large accumulated totals.
+ */
+function toBigInt(value: string | number | undefined | null): bigint {
+   if (value === undefined || value === null || value === '') return 0n;
+   return typeof value === 'number'
+      ? BigInt(Math.round(value))
+      : BigInt(value);
+}
+
+/**
+ * Folds one wallet's `weight` into the proposal's current tallies.
+ *
+ * Pure: invoked by {@link castKeyProposalVote} inside its transaction so the
+ * read-modify-write of the denormalised totals is atomic with the vote insert.
+ * Key counts are integers, so `bigint` avoids floating-point drift as totals
+ * accumulate and preserves every existing option bucket.
+ */
+export function applyVoteWeight(
+   current: ProposalTotals,
+   weight: string,
+   option: string
+): ProposalTotals {
+   const w = toBigInt(weight);
+   const currentResults = current.results ?? {};
+   const newTotal = toBigInt(current.totalVotingWeight) + w;
+   const newOptionWeight = toBigInt(currentResults[option] ?? 0) + w;
+
+   return {
+      totalVotingWeight: newTotal.toString(),
+      results: {
+         ...currentResults,
+         [option]: newOptionWeight.toString(),
+      },
+   };
+}
+
 export interface CastVoteResult {
    proposalId: string;
    optionIndex: number;
@@ -134,20 +182,8 @@ export async function castKeyProposalVote(
       throw new DuplicateVoteError();
    }
 
-   // Delegated weight: sum of key balances of all active delegators.
-   // Fetched outside the transaction because it is read-only and does not
-   // need to be part of the atomic write.
-   const [delegatedBalance, delegatorCount] = await Promise.all([
-      getDelegatedVoteWeight(wallet, keyId),
-      prisma.voteDelegation.count({
-         where: { delegateeWallet: wallet, keyId, isActive: true },
-      }),
-   ]);
-
-   const totalWeight = ownBalance + delegatedBalance;
-   const weightStr = String(totalWeight);
-   const ownWeightStr = String(ownBalance);
-   const delegatedWeightStr = String(delegatedBalance);
+   const weight = String(balance);
+   const option = options[optionIndex];
 
    // TODO: submit cast_vote contract call via Stellar SDK
    // On-chain failure should return 502 before reaching this point.
@@ -158,17 +194,51 @@ export async function castKeyProposalVote(
          proposalId,
          voter: wallet,
          optionIndex,
-         option: options[optionIndex],
-         ownWeight: ownWeightStr,
-         delegatedWeight: delegatedWeightStr,
-         totalWeight: weightStr,
-         delegatorCount,
+         option,
+         weight,
       },
       'Submitting cast_vote contract call'
    );
 
-   await prisma.$transaction([
-      prisma.governanceVote.create({
+   // Atomically: re-read the proposal (active check + current tallies), fold
+   // this wallet's weight into totalVotingWeight/results, persist the updated
+   // tally, then insert the vote and its activity audit row. Using the
+   // interactive transaction form ensures the tally write and the vote insert
+   // commit together — they cannot diverge.
+   await prisma.$transaction(async tx => {
+      const proposal = await tx.governanceProposal.findUnique({
+         where: { keyId_proposalId: { keyId, proposalId } },
+         select: {
+            totalVotingWeight: true,
+            results: true,
+            status: true,
+         },
+      });
+
+      if (!proposal || proposal.status !== 'active') {
+         const err = new Error('Proposal not found or closed');
+         err.name = 'ProposalNotFoundOrClosedError';
+         throw err;
+      }
+
+      const updated = applyVoteWeight(
+         {
+            totalVotingWeight: proposal.totalVotingWeight,
+            results: proposal.results as Record<string, string>,
+         },
+         weight,
+         option
+      );
+
+      await tx.governanceProposal.update({
+         where: { keyId_proposalId: { keyId, proposalId } },
+         data: {
+            totalVotingWeight: updated.totalVotingWeight,
+            results: updated.results,
+         },
+      });
+
+      await tx.governanceVote.create({
          data: {
             keyId,
             proposalId,
@@ -176,9 +246,9 @@ export async function castKeyProposalVote(
             optionIndex,
             weight: new Decimal(weightStr),
          },
-      }),
-      // Use the correct GOVERNANCE_VOTE_CAST activity type (#933).
-      prisma.activity.create({
+      });
+
+      await tx.activity.create({
          data: {
             type: 'GOVERNANCE_VOTE_CAST' as any,
             actor: wallet,
@@ -187,15 +257,12 @@ export async function castKeyProposalVote(
                keyId,
                proposalId,
                optionIndex,
-               option: options[optionIndex],
-               ownWeight: ownWeightStr,
-               delegatedWeight: delegatedWeightStr,
-               totalWeight: weightStr,
-               delegatorCount,
+               option,
+               weight,
             },
          },
-      }),
-   ]);
+      });
+   });
 
    return {
       proposalId,
