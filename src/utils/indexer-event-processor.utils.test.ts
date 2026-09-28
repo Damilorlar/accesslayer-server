@@ -9,10 +9,12 @@ import {
 jest.mock('./logger.utils', () => ({
    logger: {
       info: jest.fn(),
+      debug: jest.fn(),
    },
 }));
 
 const infoMock = logger.info as jest.Mock;
+const debugMock = logger.debug as jest.Mock;
 
 function makeEvent(
    overrides: Partial<IndexerChainEvent> = {}
@@ -28,6 +30,7 @@ function makeEvent(
 describe('indexer-event-processor.utils', () => {
    beforeEach(() => {
       infoMock.mockClear();
+      debugMock.mockClear();
    });
 
    describe('getChainEventId', () => {
@@ -93,7 +96,88 @@ describe('indexer-event-processor.utils', () => {
          await processIndexerChainEvents(events, handler);
 
          expect(handler).toHaveBeenCalledTimes(2);
-         expect(infoMock).toHaveBeenCalledTimes(2);
+         // 1 batch-start log + 2 per-event logs
+         expect(infoMock).toHaveBeenCalledTimes(3);
+      });
+
+      it('emits an info-level batch-start log with the ledger range and raw batch size', async () => {
+         const events: IndexerChainEvent[] = [
+            makeEvent({ txHash: '0x1', eventIndex: 0, ledger: 105 }),
+            makeEvent({ txHash: '0x1', eventIndex: 0, ledger: 105 }), // duplicate
+            makeEvent({ txHash: '0x2', eventIndex: 0, ledger: 110 }),
+         ];
+         const handler = jest.fn().mockResolvedValue(undefined);
+
+         await processIndexerChainEvents(events, handler);
+
+         expect(infoMock).toHaveBeenNthCalledWith(
+            1,
+            expect.objectContaining({
+               type: 'indexer_batch_started',
+               from_ledger: 105,
+               to_ledger: 110,
+               batch_size: 3, // size before dedup
+            }),
+            'Indexer batch started'
+         );
+      });
+
+      it('emits a debug-level batch-completion log with events processed and duration', async () => {
+         const events: IndexerChainEvent[] = [
+            makeEvent({ txHash: '0x1', eventIndex: 0, ledger: 105 }),
+            makeEvent({ txHash: '0x1', eventIndex: 0, ledger: 105 }), // duplicate
+            makeEvent({ txHash: '0x2', eventIndex: 0, ledger: 110 }),
+         ];
+         const handler = jest.fn().mockResolvedValue(undefined);
+
+         await processIndexerChainEvents(events, handler);
+
+         expect(debugMock).toHaveBeenCalledTimes(1);
+         expect(debugMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+               type: 'indexer_batch_completed',
+               from_ledger: 105,
+               to_ledger: 110,
+               events_processed: 2, // unique events after dedup
+               duration_ms: expect.any(Number),
+            }),
+            'Indexer batch completed'
+         );
+      });
+
+      it('emits exactly one batch-start and one batch-completion log regardless of batch size', async () => {
+         const events: IndexerChainEvent[] = [
+            makeEvent({ txHash: '0x1', eventIndex: 0, ledger: 1 }),
+            makeEvent({ txHash: '0x2', eventIndex: 0, ledger: 2 }),
+            makeEvent({ txHash: '0x3', eventIndex: 0, ledger: 3 }),
+         ];
+         const handler = jest.fn().mockResolvedValue(undefined);
+
+         await processIndexerChainEvents(events, handler);
+
+         // 1 batch-start + 3 per-event info logs
+         expect(infoMock).toHaveBeenCalledTimes(4);
+         expect(debugMock).toHaveBeenCalledTimes(1);
+      });
+
+      it('handles a batch with no ledger values by omitting the range', async () => {
+         const events: IndexerChainEvent[] = [
+            makeEvent({ txHash: '0x1', eventIndex: 0, ledger: undefined }),
+         ];
+         const handler = jest.fn().mockResolvedValue(undefined);
+
+         await processIndexerChainEvents(events, handler);
+
+         expect(infoMock).toHaveBeenNthCalledWith(
+            1,
+            expect.objectContaining({
+               type: 'indexer_batch_started',
+               from_ledger: undefined,
+               to_ledger: undefined,
+               batch_size: 1,
+            }),
+            'Indexer batch started'
+         );
       });
    });
 });

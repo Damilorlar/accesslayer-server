@@ -1,6 +1,3 @@
-// src/modules/indexer/ledger-gap-detection.service.ts
-// Detects gaps in processed ledger sequences and logs warnings.
-
 import { prisma } from '../../utils/prisma.utils';
 import { logger } from '../../utils/logger.utils';
 
@@ -95,21 +92,35 @@ export async function detectLedgerGap(): Promise<LedgerGap> {
  *
  * @param ledger - The ledger sequence number just processed.
  * @param cursor - The opaque cursor for resumption.
+ * @param batchHash - Optional SHA-256 hash of the batch identifiers for log correlation.
  */
 export async function updateIndexedLedger(
    ledger: number,
-   cursor: string
+   cursor: string,
+   batchHash?: string
 ): Promise<void> {
-   await prisma.indexedLedger.upsert({
-      where: { id: 1 },
-      create: {
-         id: 1,
-         ledger,
-         cursor,
-      },
-      update: {
-         ledger,
-         cursor,
-      },
-   });
+   try {
+      await prisma.indexedLedger.upsert({
+         where: { id: 1 },
+         create: {
+            id: 1,
+            ledger,
+            cursor,
+         },
+         update: {
+            ledger,
+            cursor,
+         },
+      });
+   } catch (err) {
+      logger.warn(
+         {
+            batch_hash: batchHash ?? null,
+            error_reason: err instanceof Error ? err.message : String(err),
+            failed_at: new Date().toISOString(),
+            ledger,
+         },
+         'Indexer checkpoint write failed'
+      );
+   }
 }

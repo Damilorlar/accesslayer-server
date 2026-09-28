@@ -28,7 +28,7 @@ const mockPrisma = prisma as unknown as {
 };
 
 const WALLET_ADDRESS =
-   'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+   'GCZURJAWEEAYDCIIUFMCGVDIKBASNKQQ7ZCX33BP2DZHFF52SG6BLW6J';
 
 describe('fetchWalletHoldings ownership read model integration', () => {
    beforeEach(() => {

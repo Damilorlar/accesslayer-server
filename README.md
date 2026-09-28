@@ -15,6 +15,7 @@ The server is responsible for:
 - notifications, analytics, and moderation workflows
 - access checks for gated off-chain content
 - trade webhooks for external integrations
+- a centralised Soroban contract interaction service that wraps all on-chain submissions with retry, error classification, transaction tracking, and resolution events ([Soroban Contract Service Reference](./docs/soroban-contract-service.md))
 
 See [Backend Domain Model and Endpoint Boundaries](./docs/architecture/domain-boundaries.md) for a technical overview, [Creator Data Model Reference](./docs/architecture/creator-data-model.md) for creator field definitions, [API Versioning](./docs/api-versioning.md) for details on schema versioning, [API Timeout Configuration](./docs/api-timeouts.md) for timeout defaults, [Rate Limiting Configuration](./docs/rate-limiting.md) for rate limit defaults and guidelines, and [Trade Webhooks Reference](./docs/webhooks.md) for webhook payload and delivery behavior.
 
@@ -34,12 +35,16 @@ See [Backend Domain Model and Endpoint Boundaries](./docs/architecture/domain-bo
 
 ## Local setup
 
+New contributors should follow the [Local Development Setup Guide](./docs/local-development-setup.md) — it covers prerequisites, environment configuration, migrations, seeding, starting the API server and indexer, and verifying the result end to end.
+
+Condensed version for returning contributors:
+
 ```bash
 pnpm install
-cp .env.example .env
+cp .env.example .env   # then fill the required credentials — see the setup guide
 pnpm db:up
-pnpm exec prisma generate
-pnpm exec prisma db push
+pnpm generate
+pnpm migrate
 pnpm dev
 ```
 

@@ -1,7 +1,7 @@
 // Integration test: wallet holdings total value recalculated after price snapshot update (#470)
 //
 // Covers: total_value and current_price reflect the current price snapshot,
-// both update correctly when the snapshot price changes, null when no snapshot exists,
+// both update correctly when the snapshot price changes, zero value when no snapshot exists,
 // and multi-holding aggregation is correct.
 // Uses Jest mocks — no database required.
 
@@ -29,7 +29,7 @@ const mockPrisma = prisma as unknown as {
 };
 
 const WALLET_ADDRESS =
-   'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+   'GCZURJAWEEAYDCIIUFMCGVDIKBASNKQQ7ZCX33BP2DZHFF52SG6BLW6J';
 const CREATOR_ID = 'creator-snap-test-1';
 
 describe('Holdings total_value recalculated after price snapshot update', () => {
@@ -83,13 +83,14 @@ describe('Holdings total_value recalculated after price snapshot update', () => 
       expect(updatedItems[0].total_value).not.toBe(initialTotalValue);
    });
 
-   it('current_price and total_value are null when no snapshot exists for the creator', async () => {
+   it('returns zero total_value when no snapshot exists for the creator while preserving quantity', async () => {
       mockPrisma.creatorPriceSnapshot.findMany.mockResolvedValue([]);
 
       const [items] = await fetchWalletHoldings(WALLET_ADDRESS);
 
       expect(items[0].current_price).toBeNull();
-      expect(items[0].total_value).toBeNull();
+      expect(items[0].total_value).toBe('0');
+      expect(items[0].key_count).toBe('5');
    });
 
    it('total_value is computed per-holding when wallet has multiple holdings', async () => {

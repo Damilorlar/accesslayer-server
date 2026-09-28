@@ -277,5 +277,43 @@ describe('compute24hVolume()', () => {
 
          expect(volume).toBe(0n);
       });
+
+      it('includes trades at 23h 59m ago and excludes 24h 1m ago across a ledger boundary', async () => {
+         const oneHourAgo = new Date(NOW.getTime() - 1 * 60 * 60 * 1000);
+         const twentyThreeHoursFiftyNineMinsAgo = new Date(
+            NOW.getTime() - (23 * 60 * 60 + 59 * 60) * 1000
+         );
+         const exactly24hAgo = new Date(NOW.getTime() - 24 * 60 * 60 * 1000);
+         const twentyFourHoursOneMinAgo = new Date(
+            NOW.getTime() - (24 * 60 * 60 + 60) * 1000
+         );
+
+         mockPrisma.activity.findMany.mockResolvedValue([
+            { payload: { price: '100' } },
+            { payload: { price: '200' } },
+            { payload: { price: '300' } },
+         ]);
+
+         const volume = await compute24hVolume(CREATOR_ID);
+
+         expect(volume).toBe(600n);
+
+         const callArgs = mockPrisma.activity.findMany.mock.calls[0][0];
+         const expectedCutoff = exactly24hAgo;
+         expect(callArgs.where.createdAt.gte.getTime()).toBe(expectedCutoff.getTime());
+
+         expect(callArgs.where.createdAt.gte.getTime()).toBeLessThanOrEqual(
+            twentyThreeHoursFiftyNineMinsAgo.getTime()
+         );
+         expect(callArgs.where.createdAt.gte.getTime()).toBeLessThanOrEqual(
+            exactly24hAgo.getTime()
+         );
+         expect(callArgs.where.createdAt.gte.getTime()).toBeLessThanOrEqual(
+            oneHourAgo.getTime()
+         );
+         expect(callArgs.where.createdAt.gte.getTime()).toBeGreaterThan(
+            twentyFourHoursOneMinAgo.getTime()
+         );
+      });
    });
 });

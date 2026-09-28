@@ -10,18 +10,7 @@ const rateLimitState = new Map<
    { requestCount: number; thresholdsLogged: Set<'80%' | '100%'> }
 >();
 
-/**
- * Truncate a wallet address to first 4 and last 4 characters.
- *
- * @param address - The full wallet address
- * @returns Truncated address in format: ABCD…WXYZ
- */
-export function truncateWalletAddress(address: string): string {
-   if (address.length <= 8) {
-      return address;
-   }
-   return `${address.slice(0, 4)}…${address.slice(-4)}`;
-}
+import { truncateWallet } from './wallet-display.utils';
 
 /**
  * Emits warn logs when a wallet's request count crosses 80% or 100% of the rate limit.
@@ -57,7 +46,7 @@ export function checkRateLimitThresholds(
    state.requestCount = requestCount;
 
    const percentage = (requestCount / limit) * 100;
-   const truncatedAddress = truncateWalletAddress(walletAddress);
+   const truncatedAddress = truncateWallet(walletAddress);
 
    // Check 80% threshold
    if (percentage >= 80 && !state.thresholdsLogged.has('80%')) {

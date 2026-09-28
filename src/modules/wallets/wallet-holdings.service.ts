@@ -70,19 +70,22 @@ export async function fetchWalletHoldings(
    }
 
    const items: HoldingEntry[] = rows.map(
-      (row: { creatorId: string; balance: unknown }) => {
+      (row: { creatorId: string; balance: unknown; frozen?: boolean }) => {
          const rawPrice = priceMap.get(row.creatorId) ?? null;
          const currentPrice = rawPrice !== null ? rawPrice.toString() : null;
          const totalValue =
-            rawPrice !== null && row.balance !== null
-               ? (Number(row.balance) * Number(rawPrice)).toString()
-               : null;
+            rawPrice === null
+               ? '0'
+               : row.balance !== null
+                 ? (Number(row.balance) * Number(rawPrice)).toString()
+                 : null;
          return {
             creator_id: row.creatorId,
             creator_handle: handleMap.get(row.creatorId) ?? null,
             key_count: row.balance,
             current_price: currentPrice,
             total_value: totalValue,
+            frozen: Boolean(row.frozen),
          };
       }
    );

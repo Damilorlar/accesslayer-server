@@ -5,6 +5,11 @@ export interface CreateWebhookInput {
    events: WebhookEventName[];
 }
 
+export interface UpdateWebhookInput {
+   callbackUrl?: string;
+   events?: WebhookEventName[];
+}
+
 export interface WebhookResponse {
    id: string;
    creatorId: string;
