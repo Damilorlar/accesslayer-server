@@ -51,6 +51,7 @@ model Invoice {
 
   @@index([creatorId])
   @@index([invoiceId])
+}
 /// Payment record for a holder buyback on a deprecated key (#882).
 /// Written in the same transaction that zeroes the holder balance so the
 /// balance reduction and the payment are atomic.
