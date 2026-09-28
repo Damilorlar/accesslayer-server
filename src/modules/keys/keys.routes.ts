@@ -104,6 +104,7 @@ import {
    matchTierForLockPeriod,
    calculateEffectiveWeight,
 } from '../staking/staking.service';
+import { getKeyCurveMilestones } from './key-milestones.service';
 
 const priceHistoryQuerySchema = z.object({
    from: z.string().datetime(),
@@ -636,6 +637,35 @@ router.get('/:keyId/supply', async (req, res, next) => {
       next(error);
    }
 });
+
+/**
+ * GET /api/v1/keys/:keyId/curve/milestones
+ * Return all milestones, current progress, and graduation status.
+ */
+router.get(
+   '/:keyId/curve/milestones',
+   cacheControl({ maxAge: 30, type: 'public', mustRevalidate: true }),
+   async (req, res, next) => {
+      const keyId = String(req.params.keyId);
+      const cacheKey = `curve-milestones:${keyId}`;
+      try {
+         const cached = await cacheGetJson<any>(cacheKey);
+         if (cached !== null) {
+            return sendSuccess(res, cached);
+         }
+
+         const result = await getKeyCurveMilestones(keyId);
+         await cacheSetJson(cacheKey, result, 30);
+         sendSuccess(res, result);
+      } catch (error) {
+         if (error instanceof Error && error.name === 'KeyNotFoundError') {
+            sendNotFound(res, 'Key');
+            return;
+         }
+         next(error);
+      }
+   }
+);
 
 /**
  * GET /api/v1/keys/:keyId/price-impact?quantity=&direction=buy|sell
