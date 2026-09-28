@@ -32,6 +32,9 @@ import portfolioRouter from './portfolio/portfolio.routes';
 import contractsRouter from './contracts/contract.routes';
 import stakingRouter from './staking/staking.routes';
 import sellersRouter from './sellers/sellers.routes';
+import governanceRouter from './governance/governance.routes';
+import factoryRouter from './factory/factory.routes';
+import lpRouter from './lp/lp.routes';
 import { BASE as CREATORS_BASE } from '../constants/creator.constants';
 
 const router = Router();
@@ -86,5 +89,8 @@ router.use('/watchlist', routeBodySizeLimit('default'), watchlistRouter);
 router.use('/investor/watchlist', routeBodySizeLimit('default'), watchlistRouter);
 router.use('/staking', routeBodySizeLimit('default'), stakingRouter);
 router.use('/sellers', routeBodySizeLimit('default'), sellersRouter);
+router.use('/governance', routeBodySizeLimit('default'), governanceRouter);
+router.use('/factory', routeBodySizeLimit('default'), factoryRouter);
+router.use('/lp', routeBodySizeLimit('default'), lpRouter);
 
 export default router;

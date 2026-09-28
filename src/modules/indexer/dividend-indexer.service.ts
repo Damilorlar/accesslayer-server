@@ -156,6 +156,12 @@ export async function processDividendEvents(
          },
       });
 
+      // Invalidate the platform activity feed's cached first page (#936) so
+      // this new DIVIDEND_DISTRIBUTED ("settlement") activity shows up promptly.
+      const { invalidateActivityFeedCache } =
+         await import('../activity/activity-feed.service');
+      await invalidateActivityFeedCache();
+
       logger.info(
          {
             distributionId: distribution.id,
