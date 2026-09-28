@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import authRouter from './auth/auth.routes';
 import healthRouter from './health/health.routes';
 import configRouter from './config/config.routes';
@@ -12,10 +12,10 @@ import ownershipRouter from './ownership/ownership.routes';
 import webhookRouter from './webhooks/webhook.router';
 import walletsRouter from './wallets/wallets.routes';
 import alertsRouter from './alerts/alert.router';
+import freezeRouter from './freeze/freeze.routes';
 import { BASE as CREATORS_BASE } from '../constants/creator.constants';
 
 const router = Router();
-
 router.use('/health', healthRouter);
 router.use('/auth', authRouter);
 router.use('/config', configRouter);
@@ -29,5 +29,6 @@ router.use('/ownership', ownershipRouter);
 router.use(CREATORS_BASE, webhookRouter);
 router.use('/wallets', walletsRouter);
 router.use('/alerts', alertsRouter);
-
+router.use('/keys', freezeRouter);
 export default router;
+
