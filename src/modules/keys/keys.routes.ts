@@ -105,6 +105,11 @@ import {
    calculateEffectiveWeight,
 } from '../staking/staking.service';
 import { getKeyCurveMilestones } from './key-milestones.service';
+import { getSunsetWatchList } from './key-sunset-watch.service';
+import {
+   getKeyPaymentAssetAnalytics,
+   getPlatformPaymentAssetDistribution,
+} from './key-analytics.service';
 
 const priceHistoryQuerySchema = z.object({
    from: z.string().datetime(),
