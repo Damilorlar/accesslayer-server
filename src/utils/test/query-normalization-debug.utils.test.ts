@@ -233,7 +233,11 @@ function run() {
       assertEqual(snapshot.valid, false, 'Should mark as invalid');
       assertOk(snapshot.errors, 'Should include errors');
       assertEqual(snapshot.errors.length, 1, 'Should have one error');
-      assertEqual(snapshot.errors[0].field, 'limit', 'Should include error field');
+      assertEqual(
+         snapshot.errors[0].field,
+         'limit',
+         'Should include error field'
+      );
       assertEqual(
          snapshot.errors[0].message,
          'Expected number, received string',
@@ -330,7 +334,11 @@ function run() {
          undefined,
          'Undefined should be preserved'
       );
-      assertEqual(snapshot.raw.field3, 'value', 'String value should be preserved');
+      assertEqual(
+         snapshot.raw.field3,
+         'value',
+         'String value should be preserved'
+      );
       restoreLogger();
    }
 
@@ -346,8 +354,16 @@ function run() {
 
       const snapshot = debugCalls[0].queryNormalization;
       assertOk(snapshot.querySignature, 'Should include querySignature');
-      assertEqual(typeof snapshot.querySignature, 'string', 'Signature should be a string');
-      assertEqual(snapshot.querySignature.length, 64, 'Signature should be 64 characters (SHA-256 hex)');
+      assertEqual(
+         typeof snapshot.querySignature,
+         'string',
+         'Signature should be a string'
+      );
+      assertEqual(
+         snapshot.querySignature.length,
+         64,
+         'Signature should be 64 characters (SHA-256 hex)'
+      );
       restoreLogger();
    }
 
@@ -362,7 +378,11 @@ function run() {
       });
 
       const snapshot = debugCalls[0].queryNormalization;
-      assertEqual(snapshot.querySignature, undefined, 'Should not include signature for non-object raw query');
+      assertEqual(
+         snapshot.querySignature,
+         undefined,
+         'Should not include signature for non-object raw query'
+      );
       restoreLogger();
    }
 

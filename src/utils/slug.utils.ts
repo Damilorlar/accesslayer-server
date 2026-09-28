@@ -37,10 +37,7 @@ export function generateSlug(input: string): string {
  * @example
  * generateSlugWithSuffix("John Doe", 2) // "john-doe-2"
  */
-export function generateSlugWithSuffix(
-   input: string,
-   suffix: number
-): string {
+export function generateSlugWithSuffix(input: string, suffix: number): string {
    const base = generateSlug(input);
    return suffix > 0 ? `${base}-${suffix}` : base;
 }

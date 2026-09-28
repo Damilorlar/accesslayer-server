@@ -1,30 +1,33 @@
 import { prisma } from './prisma.utils';
+import { logger } from './logger.utils';
 
 export interface AuditEventPayload {
-  actor: string;
-  action: string;
-  target: string;
-  targetId: string;
-  metadata?: Record<string, unknown>;
+   actor: string;
+   action: string;
+   target: string;
+   targetId: string;
+   metadata?: Record<string, unknown>;
 }
 
-export async function emitAuditEvent(payload: AuditEventPayload): Promise<void> {
-  try {
-    const data: Record<string, unknown> = {
-      actor: payload.actor,
-      action: payload.action,
-      target: payload.target,
-      targetId: payload.targetId,
-    };
+export async function emitAuditEvent(
+   payload: AuditEventPayload
+): Promise<void> {
+   try {
+      const data: Record<string, unknown> = {
+         actor: payload.actor,
+         action: payload.action,
+         target: payload.target,
+         targetId: payload.targetId,
+      };
 
-    if (payload.metadata) {
-      data.metadata = payload.metadata as Record<string, unknown>;
-    }
+      if (payload.metadata) {
+         data.metadata = payload.metadata as Record<string, unknown>;
+      }
 
-    await prisma.auditEvent.create({
-      data: data as Parameters<typeof prisma.auditEvent.create>[0]['data'],
-    });
-  } catch (error) {
-    console.error('Failed to emit audit event:', error);
-  }
+      await prisma.auditEvent.create({
+         data: data as Parameters<typeof prisma.auditEvent.create>[0]['data'],
+      });
+   } catch (error) {
+      logger.error({ error, payload }, 'Failed to emit audit event');
+   }
 }

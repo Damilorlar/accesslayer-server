@@ -17,4 +17,3 @@ export function normalizeCreatorListSearchTerm(
    const normalized = term.trim().replace(/\s+/g, ' ');
    return normalized === '' ? undefined : normalized;
 }
-

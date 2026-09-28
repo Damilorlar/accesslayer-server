@@ -16,16 +16,18 @@
  * // throws Error: Unsupported filter key(s): foo
  */
 export function rejectUnknownKeys<T extends readonly string[]>(
-    allowedKeys: T,
-    raw: Record<string, unknown>,
-    label?: string
+   allowedKeys: T,
+   raw: Record<string, unknown>,
+   label?: string
 ): void {
-    const unsupported = Object.keys(raw).filter(
-        key => !(allowedKeys as readonly string[]).includes(key)
-    );
+   const unsupported = Object.keys(raw).filter(
+      key => !(allowedKeys as readonly string[]).includes(key)
+   );
 
-    if (unsupported.length > 0) {
-        const prefix = label ? `Unsupported ${label} key(s)` : 'Unsupported filter key(s)';
-        throw new Error(`${prefix}: ${unsupported.join(', ')}`);
-    }
+   if (unsupported.length > 0) {
+      const prefix = label
+         ? `Unsupported ${label} key(s)`
+         : 'Unsupported filter key(s)';
+      throw new Error(`${prefix}: ${unsupported.join(', ')}`);
+   }
 }

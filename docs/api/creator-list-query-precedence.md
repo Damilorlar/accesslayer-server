@@ -6,15 +6,15 @@ which value takes effect.
 
 ## Parameter reference
 
-| Parameter  | Type              | Default      | Notes                                                    |
-| :--------- | :---------------- | :----------- | :------------------------------------------------------- |
-| `limit`    | integer (1–100)   | `20`         | Number of results per page                               |
-| `offset`   | integer (≥ 0)     | `0`          | Number of results to skip                                |
-| `sort`     | enum              | `createdAt`  | Field used to order results                              |
-| `order`    | `asc` \| `desc`   | `desc`       | Direction applied to the `sort` field                    |
-| `verified` | boolean           | _(absent)_   | Filter by creator verification status                    |
-| `search`   | string            | _(absent)_   | Full-text filter applied to display name and handle      |
-| `include`  | comma-separated   | _(absent)_   | Extra data to embed in each result (e.g. `stats`)        |
+| Parameter  | Type            | Default     | Notes                                               |
+| :--------- | :-------------- | :---------- | :-------------------------------------------------- |
+| `limit`    | integer (1–100) | `20`        | Number of results per page                          |
+| `offset`   | integer (≥ 0)   | `0`         | Number of results to skip                           |
+| `sort`     | enum            | `createdAt` | Field used to order results                         |
+| `order`    | `asc` \| `desc` | `desc`      | Direction applied to the `sort` field               |
+| `verified` | boolean         | _(absent)_  | Filter by creator verification status               |
+| `search`   | string          | _(absent)_  | Full-text filter applied to display name and handle |
+| `include`  | comma-separated | _(absent)_  | Extra data to embed in each result (e.g. `stats`)   |
 
 ## Precedence rules
 
@@ -85,18 +85,18 @@ This is consistent with how Express parses repeated scalar query params.
 
 ## Behaviour summary table
 
-| Supplied params                        | Effective behaviour                               |
-| :------------------------------------- | :------------------------------------------------ |
-| _(no params)_                          | `createdAt desc`, page 1 (limit 20, offset 0)     |
-| `sort=displayName`                     | `displayName desc`                                |
-| `order=asc`                            | `createdAt asc`                                   |
-| `sort=displayName&order=asc`           | `displayName asc`                                 |
-| `verified=true`                        | verified creators only, `createdAt desc`          |
-| `search=jazz`                          | creators matching "jazz", `createdAt desc`        |
-| `verified=true&search=jazz`            | verified creators matching "jazz", `createdAt desc` |
-| `verified=true&sort=displayName`       | verified creators sorted `displayName desc`       |
-| `limit=10&offset=20`                   | page 3 at 10-per-page                             |
-| `unknownParam=x`                       | `400 Bad Request`                                 |
+| Supplied params                  | Effective behaviour                                 |
+| :------------------------------- | :-------------------------------------------------- |
+| _(no params)_                    | `createdAt desc`, page 1 (limit 20, offset 0)       |
+| `sort=displayName`               | `displayName desc`                                  |
+| `order=asc`                      | `createdAt asc`                                     |
+| `sort=displayName&order=asc`     | `displayName asc`                                   |
+| `verified=true`                  | verified creators only, `createdAt desc`            |
+| `search=jazz`                    | creators matching "jazz", `createdAt desc`          |
+| `verified=true&search=jazz`      | verified creators matching "jazz", `createdAt desc` |
+| `verified=true&sort=displayName` | verified creators sorted `displayName desc`         |
+| `limit=10&offset=20`             | page 3 at 10-per-page                               |
+| `unknownParam=x`                 | `400 Bad Request`                                   |
 
 ## Related files
 

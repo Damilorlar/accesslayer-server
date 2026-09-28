@@ -120,7 +120,11 @@ describe('GET /api/v1/creators — empty feed with filter combinations', () => {
          include: '   ',
       });
       const explicitDefaultsRes = makeRes();
-      await httpListCreators(explicitDefaultsReq, explicitDefaultsRes, makeNext());
+      await httpListCreators(
+         explicitDefaultsReq,
+         explicitDefaultsRes,
+         makeNext()
+      );
 
       expect(creatorsUtils.fetchCreatorList).toHaveBeenNthCalledWith(
          1,
@@ -139,8 +143,8 @@ describe('GET /api/v1/creators — empty feed with filter combinations', () => {
          })
       );
 
-      const explicitCallArgs = (creatorsUtils.fetchCreatorList as jest.Mock).mock
-         .calls[1][0];
+      const explicitCallArgs = (creatorsUtils.fetchCreatorList as jest.Mock)
+         .mock.calls[1][0];
 
       expect(explicitCallArgs.search).toBeUndefined();
       expect(explicitCallArgs.include).toBeUndefined();
@@ -155,7 +159,8 @@ describe('GET /api/v1/creators — empty feed with filter combinations', () => {
       const res = makeRes();
       await httpListCreators(req, res, makeNext());
 
-      const callArgs = (creatorsUtils.fetchCreatorList as jest.Mock).mock.calls[0][0];
+      const callArgs = (creatorsUtils.fetchCreatorList as jest.Mock).mock
+         .calls[0][0];
 
       expect(callArgs).not.toHaveProperty('verified', true);
       expect(callArgs).not.toHaveProperty('verified', false);
@@ -443,7 +448,9 @@ describe('GET /api/v1/creators — empty feed with filter combinations', () => {
          expect(body.data.meta).toHaveProperty('hasMore', false);
 
          jest.clearAllMocks();
-         jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([[], 0]);
+         jest
+            .spyOn(creatorsUtils, 'fetchCreatorList')
+            .mockResolvedValue([[], 0]);
       }
    });
 

@@ -96,10 +96,9 @@ describe('GET /api/v1/creators — multiple category filters with fixture data',
    // ── Multi-filter: verified + search ────────────────────────────────────────
 
    it('passes verified=true and search together to fetchCreatorList', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         [FIXTURE_VERIFIED_JAZZ],
-         1,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([[FIXTURE_VERIFIED_JAZZ], 1]);
 
       const req = makeReq({ verified: 'true', search: 'jazz' });
       const res = makeRes();
@@ -114,10 +113,9 @@ describe('GET /api/v1/creators — multiple category filters with fixture data',
    });
 
    it('returns only the creators the service resolved for verified=true + search=jazz', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         [FIXTURE_VERIFIED_JAZZ],
-         1,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([[FIXTURE_VERIFIED_JAZZ], 1]);
 
       const req = makeReq({ verified: 'true', search: 'jazz' });
       const res = makeRes();
@@ -131,10 +129,9 @@ describe('GET /api/v1/creators — multiple category filters with fixture data',
    });
 
    it('returns correct pagination metadata for verified=true + search=jazz (1 result)', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         [FIXTURE_VERIFIED_JAZZ],
-         1,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([[FIXTURE_VERIFIED_JAZZ], 1]);
 
       const req = makeReq({ verified: 'true', search: 'jazz' });
       const res = makeRes();
@@ -147,10 +144,9 @@ describe('GET /api/v1/creators — multiple category filters with fixture data',
    });
 
    it('passes verified=false and search together to fetchCreatorList', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         [FIXTURE_UNVERIFIED_ROCK],
-         1,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([[FIXTURE_UNVERIFIED_ROCK], 1]);
 
       const req = makeReq({ verified: 'false', search: 'rock' });
       const res = makeRes();
@@ -165,10 +161,9 @@ describe('GET /api/v1/creators — multiple category filters with fixture data',
    });
 
    it('returns only unverified-rock creator for verified=false + search=rock', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         [FIXTURE_UNVERIFIED_ROCK],
-         1,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([[FIXTURE_UNVERIFIED_ROCK], 1]);
 
       const req = makeReq({ verified: 'false', search: 'rock' });
       const res = makeRes();
@@ -182,12 +177,19 @@ describe('GET /api/v1/creators — multiple category filters with fixture data',
    // ── Multi-filter: verified + search + pagination ───────────────────────────
 
    it('passes verified, search, limit, and offset together to fetchCreatorList', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         [FIXTURE_VERIFIED_JAZZ, FIXTURE_VERIFIED_ROCK],
-         2,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([
+            [FIXTURE_VERIFIED_JAZZ, FIXTURE_VERIFIED_ROCK],
+            2,
+         ]);
 
-      const req = makeReq({ verified: 'true', search: 'test', limit: '5', offset: '0' });
+      const req = makeReq({
+         verified: 'true',
+         search: 'test',
+         limit: '5',
+         offset: '0',
+      });
       const res = makeRes();
       await httpListCreators(req, res, makeNext());
 
@@ -220,12 +222,19 @@ describe('GET /api/v1/creators — multiple category filters with fixture data',
    });
 
    it('hasMore is true when total exceeds limit+offset with multiple filters active', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         [FIXTURE_VERIFIED_JAZZ, FIXTURE_VERIFIED_ROCK],
-         20,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([
+            [FIXTURE_VERIFIED_JAZZ, FIXTURE_VERIFIED_ROCK],
+            20,
+         ]);
 
-      const req = makeReq({ verified: 'true', search: 'test', limit: '2', offset: '0' });
+      const req = makeReq({
+         verified: 'true',
+         search: 'test',
+         limit: '2',
+         offset: '0',
+      });
       const res = makeRes();
       await httpListCreators(req, res, makeNext());
 
@@ -235,12 +244,19 @@ describe('GET /api/v1/creators — multiple category filters with fixture data',
    });
 
    it('hasMore is false when all results fit within limit+offset', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         [FIXTURE_VERIFIED_JAZZ, FIXTURE_VERIFIED_ROCK],
-         2,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([
+            [FIXTURE_VERIFIED_JAZZ, FIXTURE_VERIFIED_ROCK],
+            2,
+         ]);
 
-      const req = makeReq({ verified: 'true', search: 'test', limit: '10', offset: '0' });
+      const req = makeReq({
+         verified: 'true',
+         search: 'test',
+         limit: '10',
+         offset: '0',
+      });
       const res = makeRes();
       await httpListCreators(req, res, makeNext());
 
@@ -252,12 +268,18 @@ describe('GET /api/v1/creators — multiple category filters with fixture data',
    // ── Multi-filter: verified + sort + order ──────────────────────────────────
 
    it('passes verified, sort, and order together to fetchCreatorList', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         [FIXTURE_VERIFIED_JAZZ, FIXTURE_VERIFIED_ROCK],
-         2,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([
+            [FIXTURE_VERIFIED_JAZZ, FIXTURE_VERIFIED_ROCK],
+            2,
+         ]);
 
-      const req = makeReq({ verified: 'true', sort: 'displayName', order: 'asc' });
+      const req = makeReq({
+         verified: 'true',
+         sort: 'displayName',
+         order: 'asc',
+      });
       const res = makeRes();
       await httpListCreators(req, res, makeNext());
 
@@ -271,12 +293,18 @@ describe('GET /api/v1/creators — multiple category filters with fixture data',
    });
 
    it('serializes multiple fixture items correctly for verified + sort combo', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         [FIXTURE_VERIFIED_JAZZ, FIXTURE_VERIFIED_ROCK],
-         2,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([
+            [FIXTURE_VERIFIED_JAZZ, FIXTURE_VERIFIED_ROCK],
+            2,
+         ]);
 
-      const req = makeReq({ verified: 'true', sort: 'displayName', order: 'asc' });
+      const req = makeReq({
+         verified: 'true',
+         sort: 'displayName',
+         order: 'asc',
+      });
       const res = makeRes();
       await httpListCreators(req, res, makeNext());
 
@@ -290,10 +318,9 @@ describe('GET /api/v1/creators — multiple category filters with fixture data',
    // ── Full fixture set: all four creators ───────────────────────────────────
 
    it('returns all fixture creators with no filter applied', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         ALL_FIXTURES,
-         ALL_FIXTURES.length,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([ALL_FIXTURES, ALL_FIXTURES.length]);
 
       const req = makeReq({});
       const res = makeRes();
@@ -316,10 +343,9 @@ describe('GET /api/v1/creators — multiple category filters with fixture data',
       ];
 
       for (const query of filterCombinations) {
-         jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-            [FIXTURE_VERIFIED_JAZZ],
-            1,
-         ]);
+         jest
+            .spyOn(creatorsUtils, 'fetchCreatorList')
+            .mockResolvedValue([[FIXTURE_VERIFIED_JAZZ], 1]);
 
          const req = makeReq(query);
          const res = makeRes();
@@ -337,10 +363,9 @@ describe('GET /api/v1/creators — multiple category filters with fixture data',
    // ── Serialized item shape ──────────────────────────────────────────────────
 
    it('each item in the response has the expected public shape', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         [FIXTURE_VERIFIED_JAZZ],
-         1,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([[FIXTURE_VERIFIED_JAZZ], 1]);
 
       const req = makeReq({ verified: 'true', search: 'jazz' });
       const res = makeRes();
@@ -359,10 +384,12 @@ describe('GET /api/v1/creators — multiple category filters with fixture data',
    });
 
    it('pagination metadata has all required fields for any multi-filter combo', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         [FIXTURE_VERIFIED_JAZZ, FIXTURE_UNVERIFIED_JAZZ],
-         2,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([
+            [FIXTURE_VERIFIED_JAZZ, FIXTURE_UNVERIFIED_JAZZ],
+            2,
+         ]);
 
       const req = makeReq({ search: 'jazz', sort: 'createdAt', order: 'asc' });
       const res = makeRes();

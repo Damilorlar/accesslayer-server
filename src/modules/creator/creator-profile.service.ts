@@ -9,9 +9,12 @@ import { formatIsoTimestamp } from '../../utils/iso-timestamp.utils';
 import { compute24hPriceChange } from '../../utils/price.utils';
 import { normalizeSocialLinkUrl } from './creator-social-link-url.utils';
 import { truncateString } from '../../utils/string-truncate.utils';
+import { computePriceChange } from '../../utils/price-change.utils';
+import { sanitizeDisplayName } from './creator-display-name-sanitize.utils';
+import { invalidateKeyFeesCache } from '../keys/key-fees.service';
 
 const CREATOR_PROFILE_LIMITS = {
-   displayName: 80,
+   displayName: 50,
    bio: 1000,
    linkLabel: 40,
    perkTitle: 100,
@@ -105,6 +108,9 @@ export async function getCreatorProfile(
          updatedAt: null,
          perks: [],
          links: [],
+         tradingPaused: false,
+         currentMilestone: 0,
+         relaunchCount: 0,
          currentPrice: null,
          price24hAgo: null,
          priceChange24h: null,
@@ -121,8 +127,17 @@ export async function getCreatorProfile(
       lastTradeAt: Date | null;
    } | null;
 
+   const ONE_DAY_MS = 86_400_000;
    let priceChange24h: number | null = null;
-   if (snapshot) {
+
+   const computedChange = await computePriceChange(
+      profile.id,
+      ONE_DAY_MS,
+      prisma
+   );
+   if (computedChange !== null) {
+      priceChange24h = computedChange;
+   } else if (snapshot) {
       priceChange24h = compute24hPriceChange(
          snapshot.currentPrice,
          snapshot.price24hAgo
@@ -138,6 +153,9 @@ export async function getCreatorProfile(
       updatedAt: formatIsoTimestamp(profile.updatedAt),
       perks: (profile.perks as any) || [],
       links: [], // Links are not yet in the Prisma model, keeping as part of contract
+      tradingPaused: (profile as any).tradingPaused ?? false,
+      currentMilestone: (profile as any).currentMilestone ?? 0,
+      relaunchCount: (profile as any).relaunchCount ?? 0,
       currentPrice: snapshot ? snapshot.currentPrice.toString() : null,
       price24hAgo: snapshot ? snapshot.price24hAgo.toString() : null,
       priceChange24h,
@@ -165,7 +183,7 @@ export async function upsertCreatorProfile(
       ...payload,
       displayName: payload.displayName
          ? truncateString(
-              payload.displayName,
+              sanitizeDisplayName(payload.displayName),
               CREATOR_PROFILE_LIMITS.displayName
            )
          : payload.displayName,
@@ -185,8 +203,21 @@ export async function upsertCreatorProfile(
          bio: normalizedPayload.bio,
          avatarUrl: normalizedPayload.avatarUrl,
          perks: normalizedPayload.perks as any,
+         ...(normalizedPayload.creatorRoyaltyBuyBps !== undefined
+            ? { creatorRoyaltyBuyBps: normalizedPayload.creatorRoyaltyBuyBps }
+            : {}),
+         ...(normalizedPayload.creatorRoyaltySellBps !== undefined
+            ? { creatorRoyaltySellBps: normalizedPayload.creatorRoyaltySellBps }
+            : {}),
       },
    });
+
+   if (
+      normalizedPayload.creatorRoyaltyBuyBps !== undefined ||
+      normalizedPayload.creatorRoyaltySellBps !== undefined
+   ) {
+      await invalidateKeyFeesCache(creatorId);
+   }
 
    return {
       creatorId: profile.id,

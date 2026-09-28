@@ -14,18 +14,18 @@ const TRUE_VALUES = new Set(['true', '1']);
 const FALSE_VALUES = new Set(['false', '0']);
 
 export class ParseBooleanError extends Error {
-  public readonly rawValue: string;
-  public readonly paramName: string;
+   public readonly rawValue: string;
+   public readonly paramName: string;
 
-  constructor(paramName: string, rawValue: string) {
-    super(
-      `Invalid boolean value for query parameter "${paramName}": received "${rawValue}". ` +
-        `Accepted values: "true", "false", "1", "0".`
-    );
-    this.name = 'ParseBooleanError';
-    this.rawValue = rawValue;
-    this.paramName = paramName;
-  }
+   constructor(paramName: string, rawValue: string) {
+      super(
+         `Invalid boolean value for query parameter "${paramName}": received "${rawValue}". ` +
+            `Accepted values: "true", "false", "1", "0".`
+      );
+      this.name = 'ParseBooleanError';
+      this.rawValue = rawValue;
+      this.paramName = paramName;
+   }
 }
 
 /**
@@ -37,33 +37,33 @@ export class ParseBooleanError extends Error {
  * @throws {ParseBooleanError} when the value is present but unrecognized
  */
 export function parseBoolean(
-  paramName: string,
-  raw: string | string[] | boolean | null | undefined
+   paramName: string,
+   raw: string | string[] | boolean | null | undefined
 ): boolean | null {
-  if (raw === undefined || raw === null) {
-    return null;
-  }
+   if (raw === undefined || raw === null) {
+      return null;
+   }
 
-  if (typeof raw === 'boolean') {
-    return raw;
-  }
+   if (typeof raw === 'boolean') {
+      return raw;
+   }
 
-  const rawValue = Array.isArray(raw) ? raw[0] : raw;
-  if (typeof rawValue !== 'string') {
-    throw new ParseBooleanError(paramName, String(rawValue));
-  }
+   const rawValue = Array.isArray(raw) ? raw[0] : raw;
+   if (typeof rawValue !== 'string') {
+      throw new ParseBooleanError(paramName, String(rawValue));
+   }
 
-  const value = rawValue.trim().toLowerCase();
+   const value = rawValue.trim().toLowerCase();
 
-  if (TRUE_VALUES.has(value)) {
-    return true;
-  }
+   if (TRUE_VALUES.has(value)) {
+      return true;
+   }
 
-  if (FALSE_VALUES.has(value)) {
-    return false;
-  }
+   if (FALSE_VALUES.has(value)) {
+      return false;
+   }
 
-  throw new ParseBooleanError(paramName, rawValue);
+   throw new ParseBooleanError(paramName, rawValue);
 }
 
 /**
@@ -71,10 +71,10 @@ export function parseBoolean(
  * parameter is absent instead of null.
  */
 export function parseBooleanWithDefault(
-  paramName: string,
-  raw: string | string[] | boolean | null | undefined,
-  defaultValue: boolean
+   paramName: string,
+   raw: string | string[] | boolean | null | undefined,
+   defaultValue: boolean
 ): boolean {
-  const result = parseBoolean(paramName, raw);
-  return result === null ? defaultValue : result;
+   const result = parseBoolean(paramName, raw);
+   return result === null ? defaultValue : result;
 }

@@ -45,10 +45,9 @@ describe('GET /api/v1/creators — sort=createdAt&order=desc (newest registered)
    });
 
    it('passes sort=createdAt and order=desc to fetchCreatorList', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         FIXTURES_DESCENDING,
-         FIXTURES_DESCENDING.length,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([FIXTURES_DESCENDING, FIXTURES_DESCENDING.length]);
 
       const req = makeReq({ sort: 'createdAt', order: 'desc' });
       const res = makeRes();
@@ -60,10 +59,9 @@ describe('GET /api/v1/creators — sort=createdAt&order=desc (newest registered)
    });
 
    it('returns items in strict descending registration order', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         FIXTURES_DESCENDING,
-         FIXTURES_DESCENDING.length,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([FIXTURES_DESCENDING, FIXTURES_DESCENDING.length]);
 
       const req = makeReq({ sort: 'createdAt', order: 'desc' });
       const res = makeRes();
@@ -80,10 +78,9 @@ describe('GET /api/v1/creators — sort=createdAt&order=desc (newest registered)
 
    it('fails if items are returned in ascending order instead of descending', async () => {
       // Mock returns ascending order — the test must detect the wrong ordering.
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         FIXTURES_ASCENDING,
-         FIXTURES_ASCENDING.length,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([FIXTURES_ASCENDING, FIXTURES_ASCENDING.length]);
 
       const req = makeReq({ sort: 'createdAt', order: 'desc' });
       const res = makeRes();
@@ -96,10 +93,9 @@ describe('GET /api/v1/creators — sort=createdAt&order=desc (newest registered)
    });
 
    it('each consecutive pair satisfies descending registration order', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         FIXTURES_DESCENDING,
-         FIXTURES_DESCENDING.length,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([FIXTURES_DESCENDING, FIXTURES_DESCENDING.length]);
 
       const req = makeReq({ sort: 'createdAt', order: 'desc' });
       const res = makeRes();
@@ -122,10 +118,9 @@ describe('GET /api/v1/creators — sort=createdAt&order=desc (newest registered)
    });
 
    it('pagination meta reflects the full fixture count', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         FIXTURES_DESCENDING,
-         FIXTURES_DESCENDING.length,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([FIXTURES_DESCENDING, FIXTURES_DESCENDING.length]);
 
       const req = makeReq({ sort: 'createdAt', order: 'desc' });
       const res = makeRes();

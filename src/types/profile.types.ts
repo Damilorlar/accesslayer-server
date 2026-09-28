@@ -128,6 +128,8 @@ export interface CreatorMetrics {
    holderCount: number;
    totalSupply: number;
    totalVolume: number;
+   /** Current key price in stroops as a string; null when no trade has occurred. */
+   currentPrice?: string | null;
    lastActivityAt?: Date;
 }
 
@@ -191,7 +193,10 @@ export function getUserCapabilities(user: User): UserCapabilities {
 }
 
 export function getUserDisplayName(user: User): string {
-   const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+   const name = [user.firstName, user.lastName]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
    return name || user.email;
 }
 

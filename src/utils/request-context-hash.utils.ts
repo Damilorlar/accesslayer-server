@@ -29,10 +29,14 @@ import { Request } from 'express';
  * computeRequestContextHash(req) // e.g. "3a9f1c2b4e7d"
  */
 export function computeRequestContextHash(req: Request): string {
-  const path = (req.path || '/').split('?')[0];
-  const contentType = (req.headers['content-type'] ?? '').split(';')[0].trim();
+   const path = (req.path || '/').split('?')[0];
+   const contentType = (req.headers['content-type'] ?? '').split(';')[0].trim();
 
-  const payload = [req.method.toUpperCase(), path, contentType].join('\x00');
+   const payload = [req.method.toUpperCase(), path, contentType].join('\x00');
 
-  return crypto.createHash('sha256').update(payload).digest('hex').slice(0, 12);
+   return crypto
+      .createHash('sha256')
+      .update(payload)
+      .digest('hex')
+      .slice(0, 12);
 }

@@ -21,11 +21,18 @@ describe('creator-read-metrics.utils', () => {
       expect(metrics.counters.totalServerErrors).toBe(1);
       expect(metrics.counters.byEndpoint.list.requests).toBe(1);
       expect(metrics.counters.byEndpoint.detail.serverErrors).toBe(1);
-      expect(metrics.counters.byEndpoint.list.histogram.buckets[0].count).toBe(0);
-      expect(metrics.counters.byEndpoint.list.histogram.buckets[1].count).toBe(1);
+      expect(metrics.counters.byEndpoint.list.histogram.buckets[0].count).toBe(
+         0
+      );
+      expect(metrics.counters.byEndpoint.list.histogram.buckets[1].count).toBe(
+         1
+      );
       const lastBucketIndex =
          metrics.counters.byEndpoint.detail.histogram.buckets.length - 1;
-      expect(metrics.counters.byEndpoint.detail.histogram.buckets[lastBucketIndex].count).toBe(1);
+      expect(
+         metrics.counters.byEndpoint.detail.histogram.buckets[lastBucketIndex]
+            .count
+      ).toBe(1);
    });
 
    it('records timing when the response finishes', () => {
@@ -55,6 +62,8 @@ describe('creator-read-metrics.utils', () => {
       expect(metrics.counters.byEndpoint.list.requests).toBe(1);
       expect(metrics.counters.byEndpoint.list.success).toBe(1);
       expect(metrics.counters.byEndpoint.list.histogram.count).toBe(1);
-      expect(metrics.counters.byEndpoint.list.histogram.sumMs).toBeGreaterThan(0);
+      expect(metrics.counters.byEndpoint.list.histogram.sumMs).toBeGreaterThan(
+         0
+      );
    });
 });

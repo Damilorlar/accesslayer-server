@@ -25,11 +25,11 @@ A structured `warn` log is emitted when `gapSize > 10` (~50 seconds at 5 s/ledge
 
 ```json
 {
-  "event": "ledger_gap_detected",
-  "lastProcessed": 12340,
-  "networkHead": 12400,
-  "gapSize": 60,
-  "gapRange": { "start": 12341, "end": 12400 }
+   "event": "ledger_gap_detected",
+   "lastProcessed": 12340,
+   "networkHead": 12400,
+   "gapSize": 60,
+   "gapRange": { "start": 12341, "end": 12400 }
 }
 ```
 
@@ -51,11 +51,11 @@ POST /api/v1/admin/indexer/replay
 
 **Body:**
 
-| Field        | Type    | Required | Description |
-| ------------ | ------- | -------- | ----------- |
-| `startLedger` | number | yes      | First ledger sequence to replay (must be >= 1) |
-| `endLedger`   | number | no       | Last ledger to replay (must be >= startLedger). Omit to replay through the current network head. |
-| `dryRun`      | boolean | no      | Validate input and acquire lock without processing events (default: `false`). |
+| Field         | Type    | Required | Description                                                                                      |
+| ------------- | ------- | -------- | ------------------------------------------------------------------------------------------------ |
+| `startLedger` | number  | yes      | First ledger sequence to replay (must be >= 1)                                                   |
+| `endLedger`   | number  | no       | Last ledger to replay (must be >= startLedger). Omit to replay through the current network head. |
+| `dryRun`      | boolean | no       | Validate input and acquire lock without processing events (default: `false`).                    |
 
 ### Behaviour
 
@@ -73,17 +73,17 @@ POST /api/v1/admin/indexer/replay
 ```json
 // HTTP 409
 {
-  "success": false,
-  "error": {
-    "code": "CONFLICT",
-    "message": "Indexer replay job is already running",
-    "details": [
-      {
-        "field": "indexerReplayLock",
-        "message": "Lock is held by admin-abc until 2026-07-19T14:00:00Z"
-      }
-    ]
-  }
+   "success": false,
+   "error": {
+      "code": "CONFLICT",
+      "message": "Indexer replay job is already running",
+      "details": [
+         {
+            "field": "indexerReplayLock",
+            "message": "Lock is held by admin-abc until 2026-07-19T14:00:00Z"
+         }
+      ]
+   }
 }
 ```
 
@@ -95,18 +95,19 @@ Set `dryRun: true` to validate the request, check the lock, and emit the audit e
 
 If a ledger gap is **not** replayed after an outage, the following data becomes permanently inaccurate:
 
-| Area | Impact |
-| ---- | ------ |
-| **Price snapshots** | `currentPrice` and `price24hAgo` in `creator_price_snapshots` reflect pre-outage prices. Trades that occurred during the gap are missing. The 24-hour rotation logic (`price24hAgo` promoted from `currentPrice`) will calculate against the wrong baseline. |
-| **Ownership balances** | `keyOwnership` rows show incorrect `balance` values. Every buy/sell during the gap is absent, so holder balances are off by the sum of missed deltas. |
-| **Activity feed** | No `KEY_BOUGHT` / `KEY_SOLD` records for trades during the gap. The feed is permanently incomplete. |
-| **Webhooks** | Registered callback URLs never receive delivery for missed trade events. Creators relying on webhook-driven workflows will not be notified. |
+| Area                   | Impact                                                                                                                                                                                                                                                       |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Price snapshots**    | `currentPrice` and `price24hAgo` in `creator_price_snapshots` reflect pre-outage prices. Trades that occurred during the gap are missing. The 24-hour rotation logic (`price24hAgo` promoted from `currentPrice`) will calculate against the wrong baseline. |
+| **Ownership balances** | `keyOwnership` rows show incorrect `balance` values. Every buy/sell during the gap is absent, so holder balances are off by the sum of missed deltas.                                                                                                        |
+| **Activity feed**      | No `KEY_BOUGHT` / `KEY_SOLD` records for trades during the gap. The feed is permanently incomplete.                                                                                                                                                          |
+| **Webhooks**           | Registered callback URLs never receive delivery for missed trade events. Creators relying on webhook-driven workflows will not be notified.                                                                                                                  |
 
 Recovery requires a manual replay (`POST /api/v1/admin/indexer/replay`) with the correct `startLedger` through `endLedger` range.
 
 ---
 
 See also:
+
 - [Indexer Architecture](./ARCHITECTURE.md) — overview of the polling and write pipeline
 - [Event Processing](./EVENT_PROCESSING.md) — deduplication and idempotency guarantees
 - [Retry and Backoff](./RETRY_BACKOFF.md) — retry strategy on transient failures

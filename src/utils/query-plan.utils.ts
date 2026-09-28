@@ -32,10 +32,9 @@ export async function captureQueryPlan(
    try {
       // EXPLAIN does not execute the query, so it is safe to run inline.
       const explainSql = `EXPLAIN (FORMAT JSON) ${sql}`;
-      const rows = await prisma.$queryRawUnsafe<Array<{ 'QUERY PLAN': QueryPlanNode[] }>>(
-         explainSql,
-         ...params
-      );
+      const rows = await prisma.$queryRawUnsafe<
+         Array<{ 'QUERY PLAN': QueryPlanNode[] }>
+      >(explainSql, ...params);
       return rows[0]?.['QUERY PLAN'] ?? null;
    } catch (err) {
       // Never let plan capture crash the request path.

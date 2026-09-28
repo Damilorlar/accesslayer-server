@@ -21,615 +21,788 @@ const walletAddressB = keypairB.publicKey();
 const userIdB = 'webhook-isolation-user-b';
 const creatorIdB = 'webhook-isolation-creator-b';
 
-function signMessageFor(keypair: Keypair, method: string, path: string, cId: string, timestamp: string): string {
-  const payload = `${method.toUpperCase()}:${path}:${cId}:${timestamp}`;
-  const hash = createHash('sha256').update(payload, 'utf8').digest();
-  return keypair.sign(hash).toString('base64');
+function signMessageFor(
+   keypair: Keypair,
+   method: string,
+   path: string,
+   cId: string,
+   timestamp: string
+): string {
+   const payload = `${method.toUpperCase()}:${path}:${cId}:${timestamp}`;
+   const hash = createHash('sha256').update(payload, 'utf8').digest();
+   return keypair.sign(hash).toString('base64');
 }
 
-function authHeadersFor(kp: Keypair, method: string, path: string, cId: string) {
-  const timestamp = Date.now().toString();
-  const signature = signMessageFor(kp, method, path, cId, timestamp);
-  return {
-    'x-wallet-address': kp.publicKey(),
-    'x-signature': signature,
-    'x-timestamp': timestamp,
-  };
+function authHeadersFor(
+   kp: Keypair,
+   method: string,
+   path: string,
+   cId: string
+) {
+   const timestamp = Date.now().toString();
+   const signature = signMessageFor(kp, method, path, cId, timestamp);
+   return {
+      'x-wallet-address': kp.publicKey(),
+      'x-signature': signature,
+      'x-timestamp': timestamp,
+   };
 }
-function signMessage(method: string, path: string, creatorId: string, timestamp: string): string {
-  const payload = `${method.toUpperCase()}:${path}:${creatorId}:${timestamp}`;
-  const hash = createHash('sha256').update(payload, 'utf8').digest();
-  return keypair.sign(hash).toString('base64');
+function signMessage(
+   method: string,
+   path: string,
+   creatorId: string,
+   timestamp: string
+): string {
+   const payload = `${method.toUpperCase()}:${path}:${creatorId}:${timestamp}`;
+   const hash = createHash('sha256').update(payload, 'utf8').digest();
+   return keypair.sign(hash).toString('base64');
 }
 
 function authHeaders(method: string, path: string, cId: string) {
-  const timestamp = Date.now().toString();
-  const signature = signMessage(method, path, cId, timestamp);
-  return {
-    'x-wallet-address': walletAddress,
-    'x-signature': signature,
-    'x-timestamp': timestamp,
-  };
+   const timestamp = Date.now().toString();
+   const signature = signMessage(method, path, cId, timestamp);
+   return {
+      'x-wallet-address': walletAddress,
+      'x-signature': signature,
+      'x-timestamp': timestamp,
+   };
 }
 
 beforeAll(async () => {
-  await prisma.user.create({
-    data: {
-      id: testUserId,
-      email: 'webhook-test@example.com',
-      passwordHash: 'dummy-hash',
-      firstName: 'Webhook',
-      lastName: 'Test',
-    },
-  });
+   await prisma.user.create({
+      data: {
+         id: testUserId,
+         email: 'webhook-test@example.com',
+         passwordHash: 'dummy-hash',
+         firstName: 'Webhook',
+         lastName: 'Test',
+      },
+   });
 
-  await prisma.stellarWallet.create({
-    data: {
-      address: walletAddress,
-      userId: testUserId,
-    },
-  });
+   await prisma.stellarWallet.create({
+      data: {
+         address: walletAddress,
+         userId: testUserId,
+      },
+   });
 
-  await prisma.creatorProfile.create({
-    data: {
-      id: creatorId,
-      userId: testUserId,
-      handle: 'webhook-test-creator',
-      displayName: 'Webhook Test Creator',
-    },
-  });
+   await prisma.creatorProfile.create({
+      data: {
+         id: creatorId,
+         userId: testUserId,
+         handle: 'webhook-test-creator',
+         displayName: 'Webhook Test Creator',
+      },
+   });
 });
 
 afterAll(async () => {
-  await prisma.webhookEvent.deleteMany({
-    where: { webhook: { creatorId } },
-  });
-  await prisma.webhook.deleteMany({ where: { creatorId } });
-  await prisma.creatorProfile.delete({ where: { id: creatorId } }).catch(() => {});
-  await prisma.stellarWallet.delete({ where: { address: walletAddress } }).catch(() => {});
-  await prisma.user.delete({ where: { id: testUserId } }).catch(() => {});
-  await prisma.$disconnect();
+   await prisma.webhookEvent.deleteMany({
+      where: { webhook: { creatorId } },
+   });
+   await prisma.webhook.deleteMany({ where: { creatorId } });
+   await prisma.creatorProfile
+      .delete({ where: { id: creatorId } })
+      .catch(() => {});
+   await prisma.stellarWallet
+      .delete({ where: { address: walletAddress } })
+      .catch(() => {});
+   await prisma.user.delete({ where: { id: testUserId } }).catch(() => {});
+   await prisma.$disconnect();
 });
 
 describe('POST /api/v1/creators/:id/webhooks', () => {
-  const basePath = `/api/v1/creators/${creatorId}/webhooks`;
+   const basePath = `/api/v1/creators/${creatorId}/webhooks`;
 
-  it('registers a webhook with valid signature and data', async () => {
-    const res = await supertest(app)
-      .post(basePath)
-      .set(authHeaders('POST', basePath, creatorId))
-      .send({ callback_url: 'https://example.com/hook', events: ['buy', 'sell'] });
-
-    expect(res.status).toBe(201);
-    expect(res.body.success).toBe(true);
-    expect(res.body.data.callbackUrl).toBe('https://example.com/hook');
-    expect(res.body.data.events).toEqual(['buy', 'sell']);
-  });
-
-  it('returns 401 when signature headers missing', async () => {
-    const res = await supertest(app)
-      .post(basePath)
-      .send({ callback_url: 'https://example.com/hook', events: ['buy'] });
-
-    expect(res.status).toBe(401);
-  });
-
-  it('returns 400 on invalid body', async () => {
-    const res = await supertest(app)
-      .post(basePath)
-      .set(authHeaders('POST', basePath, creatorId))
-      .send({ callback_url: 'not-a-url', events: ['invalid'] });
-
-    expect(res.status).toBe(400);
-  });
-
-  it('returns 422 when max webhooks reached', async () => {
-    const existingCount = await prisma.webhook.count({
-      where: { creatorId, isActive: true },
-    });
-
-    const remaining = envConfig.WEBHOOK_MAX_PER_CREATOR - existingCount;
-    for (let i = 0; i < remaining; i++) {
+   it('registers a webhook with valid signature and data', async () => {
       const res = await supertest(app)
-        .post(basePath)
-        .set(authHeaders('POST', basePath, creatorId))
-        .send({ callback_url: `https://example.com/hook-${i}`, events: ['buy'] });
+         .post(basePath)
+         .set(authHeaders('POST', basePath, creatorId))
+         .send({
+            callback_url: 'https://example.com/hook',
+            events: ['buy', 'sell'],
+         });
+
       expect(res.status).toBe(201);
-    }
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.callbackUrl).toBe('https://example.com/hook');
+      expect(res.body.data.events).toEqual(['buy', 'sell']);
+   });
 
-    const countAtLimit = await prisma.webhook.count({
-      where: { creatorId, isActive: true },
-    });
-    expect(countAtLimit).toBe(envConfig.WEBHOOK_MAX_PER_CREATOR);
+   it('returns 401 when signature headers missing', async () => {
+      const res = await supertest(app)
+         .post(basePath)
+         .send({ callback_url: 'https://example.com/hook', events: ['buy'] });
 
-    const res = await supertest(app)
-      .post(basePath)
-      .set(authHeaders('POST', basePath, creatorId))
-      .send({ callback_url: 'https://example.com/too-many', events: ['buy'] });
+      expect(res.status).toBe(401);
+   });
 
-    expect(res.status).toBe(422);
-    expect(res.body.error.code).toBe('MAX_WEBHOOKS_REACHED');
-    expect(res.body.error.message).toMatch(/maximum/i);
+   it('returns 400 on invalid body', async () => {
+      const res = await supertest(app)
+         .post(basePath)
+         .set(authHeaders('POST', basePath, creatorId))
+         .send({ callback_url: 'not-a-url', events: ['invalid'] });
 
-    const countAfter = await prisma.webhook.count({
-      where: { creatorId, isActive: true },
-    });
-    expect(countAfter).toBe(envConfig.WEBHOOK_MAX_PER_CREATOR);
-  });
+      expect(res.status).toBe(400);
+   });
+
+   it('returns 422 when max webhooks reached', async () => {
+      const existingCount = await prisma.webhook.count({
+         where: { creatorId, isActive: true },
+      });
+
+      const remaining = envConfig.WEBHOOK_MAX_PER_CREATOR - existingCount;
+      for (let i = 0; i < remaining; i++) {
+         const res = await supertest(app)
+            .post(basePath)
+            .set(authHeaders('POST', basePath, creatorId))
+            .send({
+               callback_url: `https://example.com/hook-${i}`,
+               events: ['buy'],
+            });
+         expect(res.status).toBe(201);
+      }
+
+      const countAtLimit = await prisma.webhook.count({
+         where: { creatorId, isActive: true },
+      });
+      expect(countAtLimit).toBe(envConfig.WEBHOOK_MAX_PER_CREATOR);
+
+      const res = await supertest(app)
+         .post(basePath)
+         .set(authHeaders('POST', basePath, creatorId))
+         .send({
+            callback_url: 'https://example.com/too-many',
+            events: ['buy'],
+         });
+
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe('MAX_WEBHOOKS_REACHED');
+      expect(res.body.error.message).toMatch(/maximum/i);
+
+      const countAfter = await prisma.webhook.count({
+         where: { creatorId, isActive: true },
+      });
+      expect(countAfter).toBe(envConfig.WEBHOOK_MAX_PER_CREATOR);
+   });
 });
 
 describe('GET /api/v1/creators/:id/webhooks', () => {
-  const basePath = `/api/v1/creators/${creatorId}/webhooks`;
+   const basePath = `/api/v1/creators/${creatorId}/webhooks`;
 
-  it('lists webhooks for the creator', async () => {
-    const res = await supertest(app)
-      .get(basePath)
-      .set(authHeaders('GET', basePath, creatorId));
+   it('lists webhooks for the creator', async () => {
+      const res = await supertest(app)
+         .get(basePath)
+         .set(authHeaders('GET', basePath, creatorId));
 
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(Array.isArray(res.body.data)).toBe(true);
-    expect(res.body.data.length).toBeGreaterThan(0);
-  });
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(Array.isArray(res.body.data)).toBe(true);
+      expect(res.body.data.length).toBeGreaterThan(0);
+   });
 
-  it('returns 401 without auth', async () => {
-    const res = await supertest(app).get(basePath);
-    expect(res.status).toBe(401);
-  });
+   it('returns 401 without auth', async () => {
+      const res = await supertest(app).get(basePath);
+      expect(res.status).toBe(401);
+   });
 });
 
 describe('DELETE /api/v1/creators/:id/webhooks/:webhookId', () => {
-  it('deletes a webhook', async () => {
-    const listRes = await supertest(app)
-      .get(`/api/v1/creators/${creatorId}/webhooks`)
-      .set(authHeaders('GET', `/api/v1/creators/${creatorId}/webhooks`, creatorId));
+   it('deletes a webhook', async () => {
+      const listRes = await supertest(app)
+         .get(`/api/v1/creators/${creatorId}/webhooks`)
+         .set(
+            authHeaders(
+               'GET',
+               `/api/v1/creators/${creatorId}/webhooks`,
+               creatorId
+            )
+         );
 
-    const webhookId = listRes.body.data[0].id;
+      const webhookId = listRes.body.data[0].id;
 
-    const deleteRes = await supertest(app)
-      .delete(`/api/v1/creators/${creatorId}/webhooks/${webhookId}`)
-      .set(authHeaders('DELETE', `/api/v1/creators/${creatorId}/webhooks/${webhookId}`, creatorId));
+      const deleteRes = await supertest(app)
+         .delete(`/api/v1/creators/${creatorId}/webhooks/${webhookId}`)
+         .set(
+            authHeaders(
+               'DELETE',
+               `/api/v1/creators/${creatorId}/webhooks/${webhookId}`,
+               creatorId
+            )
+         );
 
-    expect(deleteRes.status).toBe(204);
+      expect(deleteRes.status).toBe(204);
 
-    const verifyRes = await supertest(app)
-      .get(`/api/v1/creators/${creatorId}/webhooks`)
-      .set(authHeaders('GET', `/api/v1/creators/${creatorId}/webhooks`, creatorId));
+      const verifyRes = await supertest(app)
+         .get(`/api/v1/creators/${creatorId}/webhooks`)
+         .set(
+            authHeaders(
+               'GET',
+               `/api/v1/creators/${creatorId}/webhooks`,
+               creatorId
+            )
+         );
 
-    const ids = verifyRes.body.data.map((w: any) => w.id);
-    expect(ids).not.toContain(webhookId);
-  });
+      const ids = verifyRes.body.data.map((w: any) => w.id);
+      expect(ids).not.toContain(webhookId);
+   });
 
-  it('returns 404 for non-existent webhook', async () => {
-    const res = await supertest(app)
-      .delete(`/api/v1/creators/${creatorId}/webhooks/non-existent-id`)
-      .set(authHeaders('DELETE', `/api/v1/creators/${creatorId}/webhooks/non-existent-id`, creatorId));
+    it('returns 404 for non-existent webhook', async () => {
+       const res = await supertest(app)
+          .delete(`/api/v1/creators/${creatorId}/webhooks/non-existent-id`)
+          .set(
+             authHeaders(
+                'DELETE',
+                `/api/v1/creators/${creatorId}/webhooks/non-existent-id`,
+                creatorId
+             )
+          );
 
-    expect(res.status).toBe(404);
-  });
-
-  it('stops future deliveries when a webhook is deleted (#506)', async () => {
-    // Register a webhook and confirm it exists
-    const webhook = await prisma.webhook.create({
-      data: {
-        id: 'webhook-deletion-test-506',
-        creatorId,
-        callbackUrl: 'https://example.com/deleted-hook',
-        events: { set: ['BUY', 'SELL'] },
-      },
+       expect(res.status).toBe(404);
+       expect(res.body).toEqual({
+          success: false,
+          error: {
+             code: 'NOT_FOUND',
+             message: 'Webhook not found',
+          },
+       });
     });
 
-    // Delete the webhook and assert the response is 204
-    const deleteRes = await supertest(app)
-      .delete(`/api/v1/creators/${creatorId}/webhooks/${webhook.id}`)
-      .set(authHeaders('DELETE', `/api/v1/creators/${creatorId}/webhooks/${webhook.id}`, creatorId));
+   it('stops future deliveries when a webhook is deleted (#506)', async () => {
+      // Register a webhook and confirm it exists
+      const webhook = await prisma.webhook.create({
+         data: {
+            id: 'webhook-deletion-test-506',
+            creatorId,
+            callbackUrl: 'https://example.com/deleted-hook',
+            events: { set: ['BUY', 'SELL'] },
+         },
+      });
 
-    expect(deleteRes.status).toBe(204);
+      // Delete the webhook and assert the response is 204
+      const deleteRes = await supertest(app)
+         .delete(`/api/v1/creators/${creatorId}/webhooks/${webhook.id}`)
+         .set(
+            authHeaders(
+               'DELETE',
+               `/api/v1/creators/${creatorId}/webhooks/${webhook.id}`,
+               creatorId
+            )
+         );
 
-    // Webhook record no longer exists after deletion
-    const deletedWebhook = await prisma.webhook.findUnique({ where: { id: webhook.id } });
-    expect(deletedWebhook).toBeNull();
+      expect(deleteRes.status).toBe(204);
 
-    // Simulate a trade event after deletion
-    const { dispatchWebhookEvent } = await import('./webhook.service');
-    await dispatchWebhookEvent({
-      type: 'buy',
-      creatorId,
-      buyerOrSellerAddress: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',
-      amount: '100',
-      price: '10.5',
-      feePaid: '0.5',
-      timestamp: new Date().toISOString(),
-    });
+      // Webhook record no longer exists after deletion
+      const deletedWebhook = await prisma.webhook.findUnique({
+         where: { id: webhook.id },
+      });
+      expect(deletedWebhook).toBeNull();
 
-    // Assert no delivery attempt was made for the deleted webhook
-    const events = await prisma.webhookEvent.findMany({
-      where: { webhookId: webhook.id },
-    });
+      // Simulate a trade event after deletion
+      const { dispatchWebhookEvent } = await import('./webhook.service');
+      await dispatchWebhookEvent({
+         type: 'buy',
+         creatorId,
+         buyerOrSellerAddress:
+            'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',
+         amount: '100',
+         price: '10.5',
+         feePaid: '0.5',
+         timestamp: new Date().toISOString(),
+      });
 
-    expect(events.length).toBe(0);
-  });
+      // Assert no delivery attempt was made for the deleted webhook
+      const events = await prisma.webhookEvent.findMany({
+         where: { webhookId: webhook.id },
+      });
+
+      expect(events.length).toBe(0);
+   });
+});
+
+describe('GET /api/v1/creators/:id/webhooks/:webhookId', () => {
+   it('returns 404 for non-existent webhook', async () => {
+      const res = await supertest(app)
+         .get(`/api/v1/creators/${creatorId}/webhooks/non-existent-id`)
+         .set(
+            authHeaders(
+               'GET',
+               `/api/v1/creators/${creatorId}/webhooks/non-existent-id`,
+               creatorId
+            )
+         );
+
+      expect(res.status).toBe(404);
+      expect(res.body).toEqual({
+         success: false,
+         error: {
+            code: 'NOT_FOUND',
+            message: 'Webhook not found',
+         },
+      });
+   });
+});
+
+describe('PATCH /api/v1/creators/:id/webhooks/:webhookId', () => {
+   it('returns 404 for non-existent webhook', async () => {
+      const res = await supertest(app)
+         .patch(`/api/v1/creators/${creatorId}/webhooks/non-existent-id`)
+         .set(
+            authHeaders(
+               'PATCH',
+               `/api/v1/creators/${creatorId}/webhooks/non-existent-id`,
+               creatorId
+            )
+         )
+         .send({ callback_url: 'https://example.com/updated' });
+
+      expect(res.status).toBe(404);
+      expect(res.body).toEqual({
+         success: false,
+         error: {
+            code: 'NOT_FOUND',
+            message: 'Webhook not found',
+         },
+      });
+   });
 });
 
 describe('webhook dispatch', () => {
-  let webhookId: string;
+   let webhookId: string;
 
-  beforeAll(async () => {
-    const webhook = await prisma.webhook.create({
-      data: {
-        id: 'webhook-dispatch-test',
-        creatorId,
-        callbackUrl: 'https://httpbin.org/post',
-        events: { set: ['BUY', 'SELL'] },
-      },
-    });
-    webhookId = webhook.id;
-  });
+   beforeAll(async () => {
+      const webhook = await prisma.webhook.create({
+         data: {
+            id: 'webhook-dispatch-test',
+            creatorId,
+            callbackUrl: 'https://httpbin.org/post',
+            events: { set: ['BUY', 'SELL'] },
+         },
+      });
+      webhookId = webhook.id;
+   });
 
-  afterAll(async () => {
-    await prisma.webhookEvent.deleteMany({ where: { webhookId } });
-    await prisma.webhook.delete({ where: { id: webhookId } }).catch(() => {});
-  });
+   afterAll(async () => {
+      await prisma.webhookEvent.deleteMany({ where: { webhookId } });
+      await prisma.webhook.delete({ where: { id: webhookId } }).catch(() => {});
+   });
 
-  it('dispatches a buy event and creates a WebhookEvent record', async () => {
-    const { dispatchWebhookEvent } = await import('./webhook.service');
+   it('dispatches a buy event and creates a WebhookEvent record', async () => {
+      const { dispatchWebhookEvent } = await import('./webhook.service');
 
-    await dispatchWebhookEvent({
-      type: 'buy',
-      creatorId,
-      buyerOrSellerAddress: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',
-      amount: '100',
-      price: '10.5',
-      feePaid: '0.5',
-      timestamp: new Date().toISOString(),
-    });
+      await dispatchWebhookEvent({
+         type: 'buy',
+         creatorId,
+         buyerOrSellerAddress:
+            'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',
+         amount: '100',
+         price: '10.5',
+         feePaid: '0.5',
+         timestamp: new Date().toISOString(),
+      });
 
-    const events = await prisma.webhookEvent.findMany({
-      where: { webhookId, eventType: 'BUY' },
-      orderBy: { createdAt: 'desc' },
-    });
+      const events = await prisma.webhookEvent.findMany({
+         where: { webhookId, eventType: 'BUY' },
+         orderBy: { createdAt: 'desc' },
+      });
 
-    expect(events.length).toBeGreaterThan(0);
-  });
+      expect(events.length).toBeGreaterThan(0);
+   });
 
-  it('dispatches a sell event and creates a WebhookEvent record', async () => {
-    const { dispatchWebhookEvent } = await import('./webhook.service');
+   it('dispatches a sell event and creates a WebhookEvent record', async () => {
+      const { dispatchWebhookEvent } = await import('./webhook.service');
 
-    await dispatchWebhookEvent({
-      type: 'sell',
-      creatorId,
-      buyerOrSellerAddress: 'GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBWBH',
-      amount: '50',
-      price: '20.0',
-      feePaid: '1.0',
-      timestamp: new Date().toISOString(),
-    });
+      await dispatchWebhookEvent({
+         type: 'sell',
+         creatorId,
+         buyerOrSellerAddress:
+            'GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBWBH',
+         amount: '50',
+         price: '20.0',
+         feePaid: '1.0',
+         timestamp: new Date().toISOString(),
+      });
 
-    const events = await prisma.webhookEvent.findMany({
-      where: { webhookId, eventType: 'SELL' },
-      orderBy: { createdAt: 'desc' },
-    });
+      const events = await prisma.webhookEvent.findMany({
+         where: { webhookId, eventType: 'SELL' },
+         orderBy: { createdAt: 'desc' },
+      });
 
-    expect(events.length).toBeGreaterThan(0);
-  });
+      expect(events.length).toBeGreaterThan(0);
+   });
 
-  it('respects event type filter — buy-only webhook does not receive sell events', async () => {
-    const buyOnlyWebhook = await prisma.webhook.create({
-      data: {
-        id: 'webhook-filter-buy',
-        creatorId,
-        callbackUrl: 'https://httpbin.org/post',
-        events: { set: ['BUY'] },
-      },
-    });
+   it('respects event type filter — buy-only webhook does not receive sell events', async () => {
+      const buyOnlyWebhook = await prisma.webhook.create({
+         data: {
+            id: 'webhook-filter-buy',
+            creatorId,
+            callbackUrl: 'https://httpbin.org/post',
+            events: { set: ['BUY'] },
+         },
+      });
 
-    const { dispatchWebhookEvent } = await import('./webhook.service');
+      const { dispatchWebhookEvent } = await import('./webhook.service');
 
-    await dispatchWebhookEvent({
-      type: 'sell',
-      creatorId,
-      buyerOrSellerAddress: 'GCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCF',
-      amount: '25',
-      price: '30.0',
-      feePaid: '0.75',
-      timestamp: new Date().toISOString(),
-    });
+      await dispatchWebhookEvent({
+         type: 'sell',
+         creatorId,
+         buyerOrSellerAddress:
+            'GCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCF',
+         amount: '25',
+         price: '30.0',
+         feePaid: '0.75',
+         timestamp: new Date().toISOString(),
+      });
 
-    const events = await prisma.webhookEvent.findMany({
-      where: { webhookId: buyOnlyWebhook.id, eventType: 'SELL' },
-    });
+      const events = await prisma.webhookEvent.findMany({
+         where: { webhookId: buyOnlyWebhook.id, eventType: 'SELL' },
+      });
 
-    expect(events.length).toBe(0);
+      expect(events.length).toBe(0);
 
-    await prisma.webhookEvent.deleteMany({ where: { webhookId: buyOnlyWebhook.id } });
-    await prisma.webhook.delete({ where: { id: buyOnlyWebhook.id } });
-  });
+      await prisma.webhookEvent.deleteMany({
+         where: { webhookId: buyOnlyWebhook.id },
+      });
+      await prisma.webhook.delete({ where: { id: buyOnlyWebhook.id } });
+   });
 
-  it('retries delivery on failure and flags webhook as failing after exhaustion', async () => {
-    const failingWebhook = await prisma.webhook.create({
-      data: {
-        id: 'webhook-retry-test',
-        creatorId,
-        callbackUrl: 'https://nonexistent.example.com/fail',
-        events: { set: ['BUY'] },
-      },
-    });
+   it('retries delivery on failure and flags webhook as failing after exhaustion', async () => {
+      const failingWebhook = await prisma.webhook.create({
+         data: {
+            id: 'webhook-retry-test',
+            creatorId,
+            callbackUrl: 'https://nonexistent.example.com/fail',
+            events: { set: ['BUY'] },
+         },
+      });
 
-    const { dispatchWebhookEvent } = await import('./webhook.service');
+      const { dispatchWebhookEvent } = await import('./webhook.service');
 
-    await dispatchWebhookEvent({
-      type: 'buy',
-      creatorId,
-      buyerOrSellerAddress: 'GDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDH',
-      amount: '10',
-      price: '5.0',
-      feePaid: '0.25',
-      timestamp: new Date().toISOString(),
-    });
+      await dispatchWebhookEvent({
+         type: 'buy',
+         creatorId,
+         buyerOrSellerAddress:
+            'GDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDH',
+         amount: '10',
+         price: '5.0',
+         feePaid: '0.25',
+         timestamp: new Date().toISOString(),
+      });
 
-    await new Promise((resolve) => setTimeout(resolve, 15000));
+      await new Promise(resolve => setTimeout(resolve, 15000));
 
-    const updated = await prisma.webhook.findUnique({
-      where: { id: failingWebhook.id },
-      select: { isFailing: true },
-    });
+      const updated = await prisma.webhook.findUnique({
+         where: { id: failingWebhook.id },
+         select: { isFailing: true },
+      });
 
-    expect(updated?.isFailing).toBe(true);
+      expect(updated?.isFailing).toBe(true);
 
-    const events = await prisma.webhookEvent.findMany({
-      where: { webhookId: failingWebhook.id },
-    });
+      const events = await prisma.webhookEvent.findMany({
+         where: { webhookId: failingWebhook.id },
+      });
 
-    expect(events.length).toBeGreaterThan(0);
-    expect(events[0].status).toBe('FAILED');
-    expect(events[0].retryCount).toBe(envConfig.WEBHOOK_RETRY_MAX_ATTEMPTS);
+      expect(events.length).toBeGreaterThan(0);
+      expect(events[0].status).toBe('FAILED');
+      expect(events[0].retryCount).toBe(envConfig.WEBHOOK_RETRY_MAX_ATTEMPTS);
 
-    await prisma.webhookEvent.deleteMany({ where: { webhookId: failingWebhook.id } });
-    await prisma.webhook.delete({ where: { id: failingWebhook.id } });
-  }, 30000);
+      await prisma.webhookEvent.deleteMany({
+         where: { webhookId: failingWebhook.id },
+      });
+      await prisma.webhook.delete({ where: { id: failingWebhook.id } });
+   }, 30000);
 });
 
 describe('GET /api/v1/creators/:id/webhooks — isolation between creators (#474)', () => {
-  beforeAll(async () => {
-    for (const [userId, email, walletAddr, cId, handle, displayName] of [
-      [userIdA, 'webhook-isolation-a@example.com', walletAddressA, creatorIdA, 'isolation-creator-a', 'Isolation Creator A'],
-      [userIdB, 'webhook-isolation-b@example.com', walletAddressB, creatorIdB, 'isolation-creator-b', 'Isolation Creator B'],
-    ] as const) {
-      await prisma.user.create({
-        data: { id: userId, email, passwordHash: 'dummy-hash', firstName: 'Isolation', lastName: 'Test' },
-      });
-      await prisma.stellarWallet.create({ data: { address: walletAddr, userId } });
-      await prisma.creatorProfile.create({ data: { id: cId, userId, handle, displayName } });
-    }
+   beforeAll(async () => {
+      for (const [userId, email, walletAddr, cId, handle, displayName] of [
+         [
+            userIdA,
+            'webhook-isolation-a@example.com',
+            walletAddressA,
+            creatorIdA,
+            'isolation-creator-a',
+            'Isolation Creator A',
+         ],
+         [
+            userIdB,
+            'webhook-isolation-b@example.com',
+            walletAddressB,
+            creatorIdB,
+            'isolation-creator-b',
+            'Isolation Creator B',
+         ],
+      ] as const) {
+         await prisma.user.create({
+            data: {
+               id: userId,
+               email,
+               passwordHash: 'dummy-hash',
+               firstName: 'Isolation',
+               lastName: 'Test',
+            },
+         });
+         await prisma.stellarWallet.create({
+            data: { address: walletAddr, userId },
+         });
+         await prisma.creatorProfile.create({
+            data: { id: cId, userId, handle, displayName },
+         });
+      }
 
-    const pathA = `/api/v1/creators/${creatorIdA}/webhooks`;
-    const pathB = `/api/v1/creators/${creatorIdB}/webhooks`;
+      const pathA = `/api/v1/creators/${creatorIdA}/webhooks`;
+      const pathB = `/api/v1/creators/${creatorIdB}/webhooks`;
 
-    await supertest(app)
-      .post(pathA)
-      .set(authHeadersFor(keypairA, 'POST', pathA, creatorIdA))
-      .send({ callback_url: 'https://example.com/hook-a1', events: ['buy'] });
+      await supertest(app)
+         .post(pathA)
+         .set(authHeadersFor(keypairA, 'POST', pathA, creatorIdA))
+         .send({
+            callback_url: 'https://example.com/hook-a1',
+            events: ['buy'],
+         });
 
-    await supertest(app)
-      .post(pathA)
-      .set(authHeadersFor(keypairA, 'POST', pathA, creatorIdA))
-      .send({ callback_url: 'https://example.com/hook-a2', events: ['sell'] });
+      await supertest(app)
+         .post(pathA)
+         .set(authHeadersFor(keypairA, 'POST', pathA, creatorIdA))
+         .send({
+            callback_url: 'https://example.com/hook-a2',
+            events: ['sell'],
+         });
 
-    await supertest(app)
-      .post(pathB)
-      .set(authHeadersFor(keypairB, 'POST', pathB, creatorIdB))
-      .send({ callback_url: 'https://example.com/hook-b1', events: ['buy', 'sell'] });
-  });
+      await supertest(app)
+         .post(pathB)
+         .set(authHeadersFor(keypairB, 'POST', pathB, creatorIdB))
+         .send({
+            callback_url: 'https://example.com/hook-b1',
+            events: ['buy', 'sell'],
+         });
+   });
 
-  afterAll(async () => {
-    await prisma.webhook.deleteMany({ where: { creatorId: creatorIdA } });
-    await prisma.webhook.deleteMany({ where: { creatorId: creatorIdB } });
-    for (const [cId, walletAddr, userId] of [
-      [creatorIdA, walletAddressA, userIdA],
-      [creatorIdB, walletAddressB, userIdB],
-    ] as const) {
-      await prisma.creatorProfile.delete({ where: { id: cId } }).catch(() => {});
-      await prisma.stellarWallet.delete({ where: { address: walletAddr } }).catch(() => {});
-      await prisma.user.delete({ where: { id: userId } }).catch(() => {});
-    }
-  });
+   afterAll(async () => {
+      await prisma.webhook.deleteMany({ where: { creatorId: creatorIdA } });
+      await prisma.webhook.deleteMany({ where: { creatorId: creatorIdB } });
+      for (const [cId, walletAddr, userId] of [
+         [creatorIdA, walletAddressA, userIdA],
+         [creatorIdB, walletAddressB, userIdB],
+      ] as const) {
+         await prisma.creatorProfile
+            .delete({ where: { id: cId } })
+            .catch(() => {});
+         await prisma.stellarWallet
+            .delete({ where: { address: walletAddr } })
+            .catch(() => {});
+         await prisma.user.delete({ where: { id: userId } }).catch(() => {});
+      }
+   });
 
-  it("creator A's webhook list contains no webhooks from creator B", async () => {
-    const pathA = `/api/v1/creators/${creatorIdA}/webhooks`;
-    const res = await supertest(app)
-      .get(pathA)
-      .set(authHeadersFor(keypairA, 'GET', pathA, creatorIdA));
+   it("creator A's webhook list contains no webhooks from creator B", async () => {
+      const pathA = `/api/v1/creators/${creatorIdA}/webhooks`;
+      const res = await supertest(app)
+         .get(pathA)
+         .set(authHeadersFor(keypairA, 'GET', pathA, creatorIdA));
 
-    expect(res.status).toBe(200);
-    const webhooks = res.body.data as Array<{ creatorId?: string; callbackUrl: string }>;
-    expect(webhooks.every((w) => !w.callbackUrl.includes('hook-b'))).toBe(true);
-  });
+      expect(res.status).toBe(200);
+      const webhooks = res.body.data as Array<{
+         creatorId?: string;
+         callbackUrl: string;
+      }>;
+      expect(webhooks.every(w => !w.callbackUrl.includes('hook-b'))).toBe(true);
+   });
 
-  it("creator B's webhook list contains no webhooks from creator A", async () => {
-    const pathB = `/api/v1/creators/${creatorIdB}/webhooks`;
-    const res = await supertest(app)
-      .get(pathB)
-      .set(authHeadersFor(keypairB, 'GET', pathB, creatorIdB));
+   it("creator B's webhook list contains no webhooks from creator A", async () => {
+      const pathB = `/api/v1/creators/${creatorIdB}/webhooks`;
+      const res = await supertest(app)
+         .get(pathB)
+         .set(authHeadersFor(keypairB, 'GET', pathB, creatorIdB));
 
-    expect(res.status).toBe(200);
-    const webhooks = res.body.data as Array<{ callbackUrl: string }>;
-    expect(webhooks.every((w) => !w.callbackUrl.includes('hook-a'))).toBe(true);
-  });
+      expect(res.status).toBe(200);
+      const webhooks = res.body.data as Array<{ callbackUrl: string }>;
+      expect(webhooks.every(w => !w.callbackUrl.includes('hook-a'))).toBe(true);
+   });
 
-  it("count for creator A matches the number of webhooks registered for A", async () => {
-    const pathA = `/api/v1/creators/${creatorIdA}/webhooks`;
-    const res = await supertest(app)
-      .get(pathA)
-      .set(authHeadersFor(keypairA, 'GET', pathA, creatorIdA));
+   it('count for creator A matches the number of webhooks registered for A', async () => {
+      const pathA = `/api/v1/creators/${creatorIdA}/webhooks`;
+      const res = await supertest(app)
+         .get(pathA)
+         .set(authHeadersFor(keypairA, 'GET', pathA, creatorIdA));
 
-    expect(res.status).toBe(200);
-    expect(res.body.data).toHaveLength(2);
-  });
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(2);
+   });
 
-  it("count for creator B matches the number of webhooks registered for B", async () => {
-    const pathB = `/api/v1/creators/${creatorIdB}/webhooks`;
-    const res = await supertest(app)
-      .get(pathB)
-      .set(authHeadersFor(keypairB, 'GET', pathB, creatorIdB));
+   it('count for creator B matches the number of webhooks registered for B', async () => {
+      const pathB = `/api/v1/creators/${creatorIdB}/webhooks`;
+      const res = await supertest(app)
+         .get(pathB)
+         .set(authHeadersFor(keypairB, 'GET', pathB, creatorIdB));
 
-    expect(res.status).toBe(200);
-    expect(res.body.data).toHaveLength(1);
-  });
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(1);
+   });
 });
 
 describe('GET /api/v1/creators/:id/webhooks — empty list for creator with no webhooks (#551)', () => {
-  // Use a dedicated keypair + creator that has no webhooks registered.
-  // The creator ID is a positive-integer-format string to satisfy
-  // parseCreatorId in webhook-signature.middleware.ts.
-  const emptyKeypair = Keypair.random();
-  const emptyWalletAddress = emptyKeypair.publicKey();
-  const emptyUserId = 'webhook-empty-user-551';
-  const emptyCreatorId = '551001';
-  const emptyHandle = 'webhook-empty-creator-551';
-  const emptyListPath = `/api/v1/creators/${emptyCreatorId}/webhooks`;
+   // Use a dedicated keypair + creator that has no webhooks registered.
+   // The creator ID is a positive-integer-format string to satisfy
+   // parseCreatorId in webhook-signature.middleware.ts.
+   const emptyKeypair = Keypair.random();
+   const emptyWalletAddress = emptyKeypair.publicKey();
+   const emptyUserId = 'webhook-empty-user-551';
+   const emptyCreatorId = '551001';
+   const emptyHandle = 'webhook-empty-creator-551';
+   const emptyListPath = `/api/v1/creators/${emptyCreatorId}/webhooks`;
 
-  beforeAll(async () => {
-    await prisma.user.create({
-      data: {
-        id: emptyUserId,
-        email: 'webhook-empty-551@example.com',
-        passwordHash: 'dummy-hash',
-        firstName: 'Empty',
-        lastName: 'Webhooks',
-      },
-    });
+   beforeAll(async () => {
+      await prisma.user.create({
+         data: {
+            id: emptyUserId,
+            email: 'webhook-empty-551@example.com',
+            passwordHash: 'dummy-hash',
+            firstName: 'Empty',
+            lastName: 'Webhooks',
+         },
+      });
 
-    await prisma.stellarWallet.create({
-      data: {
-        address: emptyWalletAddress,
-        userId: emptyUserId,
-      },
-    });
+      await prisma.stellarWallet.create({
+         data: {
+            address: emptyWalletAddress,
+            userId: emptyUserId,
+         },
+      });
 
-    await prisma.creatorProfile.create({
-      data: {
-        id: emptyCreatorId,
-        userId: emptyUserId,
-        handle: emptyHandle,
-        displayName: 'Empty Webhooks Creator',
-      },
-    });
-  });
+      await prisma.creatorProfile.create({
+         data: {
+            id: emptyCreatorId,
+            userId: emptyUserId,
+            handle: emptyHandle,
+            displayName: 'Empty Webhooks Creator',
+         },
+      });
+   });
 
-  afterAll(async () => {
-    await prisma.webhook.deleteMany({ where: { creatorId: emptyCreatorId } });
-    await prisma.creatorProfile.delete({ where: { id: emptyCreatorId } }).catch(() => {});
-    await prisma.stellarWallet.delete({ where: { address: emptyWalletAddress } }).catch(() => {});
-    await prisma.user.delete({ where: { id: emptyUserId } }).catch(() => {});
-  });
+   afterAll(async () => {
+      await prisma.webhook.deleteMany({ where: { creatorId: emptyCreatorId } });
+      await prisma.creatorProfile
+         .delete({ where: { id: emptyCreatorId } })
+         .catch(() => {});
+      await prisma.stellarWallet
+         .delete({ where: { address: emptyWalletAddress } })
+         .catch(() => {});
+      await prisma.user.delete({ where: { id: emptyUserId } }).catch(() => {});
+   });
 
-  it('returns 200 with an empty array when the creator has not registered any webhooks (#551)', async () => {
-    // Sanity-check: ensure no webhooks are persisted in the DB for this creator.
-    const dbCount = await prisma.webhook.count({
-      where: { creatorId: emptyCreatorId },
-    });
-    expect(dbCount).toBe(0);
+   it('returns 200 with an empty array when the creator has not registered any webhooks (#551)', async () => {
+      // Sanity-check: ensure no webhooks are persisted in the DB for this creator.
+      const dbCount = await prisma.webhook.count({
+         where: { creatorId: emptyCreatorId },
+      });
+      expect(dbCount).toBe(0);
 
-    const res = await supertest(app)
-      .get(emptyListPath)
-      .set(authHeadersFor(emptyKeypair, 'GET', emptyListPath, emptyCreatorId));
+      const res = await supertest(app)
+         .get(emptyListPath)
+         .set(
+            authHeadersFor(emptyKeypair, 'GET', emptyListPath, emptyCreatorId)
+         );
 
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(Array.isArray(res.body.data)).toBe(true);
-    expect(res.body.data).toEqual([]);
-  });
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(Array.isArray(res.body.data)).toBe(true);
+      expect(res.body.data).toEqual([]);
+   });
 });
 
 describe('webhook retry on 500 response (#578)', () => {
-  let mockServer: http.Server;
-  let mockServerUrl: string;
-  let requestTimestamps: number[];
-  let secondRequestResolve: () => void;
+   let mockServer: http.Server;
+   let mockServerUrl: string;
+   let requestTimestamps: number[];
+   let secondRequestResolve: () => void;
 
-  beforeAll((done) => {
-    let requestCount = 0;
-    requestTimestamps = [];
+   beforeAll(done => {
+      let requestCount = 0;
+      requestTimestamps = [];
 
-    mockServer = http.createServer((_req, res) => {
-      requestTimestamps.push(Date.now());
-      requestCount++;
+      mockServer = http.createServer((_req, res) => {
+         requestTimestamps.push(Date.now());
+         requestCount++;
 
-      if (requestCount === 1) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Internal Server Error' }));
-      } else {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true }));
-        secondRequestResolve();
-      }
-    });
+         if (requestCount === 1) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Internal Server Error' }));
+         } else {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: true }));
+            secondRequestResolve();
+         }
+      });
 
-    mockServer.listen(0, '127.0.0.1', () => {
-      const address = mockServer.address() as any;
-      mockServerUrl = `http://127.0.0.1:${address.port}/webhook`;
-      done();
-    });
-  });
+      mockServer.listen(0, '127.0.0.1', () => {
+         const address = mockServer.address() as any;
+         mockServerUrl = `http://127.0.0.1:${address.port}/webhook`;
+         done();
+      });
+   });
 
-  afterAll((done) => {
-    mockServer.close(done);
-  });
+   afterAll(done => {
+      mockServer.close(done);
+   });
 
-  it('retries delivery after a 500 response and succeeds on the second attempt', async () => {
-    const secondRequestPromise = new Promise<void>((resolve) => {
-      secondRequestResolve = resolve;
-    });
+   it('retries delivery after a 500 response and succeeds on the second attempt', async () => {
+      const secondRequestPromise = new Promise<void>(resolve => {
+         secondRequestResolve = resolve;
+      });
 
-    const webhook = await prisma.webhook.create({
-      data: {
-        id: 'webhook-retry-500-test',
-        creatorId,
-        callbackUrl: mockServerUrl,
-        events: { set: ['BUY'] },
-      },
-    });
+      const webhook = await prisma.webhook.create({
+         data: {
+            id: 'webhook-retry-500-test',
+            creatorId,
+            callbackUrl: mockServerUrl,
+            events: { set: ['BUY'] },
+         },
+      });
 
-    const { dispatchWebhookEvent } = await import('./webhook.service');
+      const { dispatchWebhookEvent } = await import('./webhook.service');
 
-    await dispatchWebhookEvent({
-      type: 'buy',
-      creatorId,
-      buyerOrSellerAddress: 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',
-      amount: '100',
-      price: '10.5',
-      feePaid: '0.5',
-      timestamp: new Date().toISOString(),
-    });
+      await dispatchWebhookEvent({
+         type: 'buy',
+         creatorId,
+         buyerOrSellerAddress:
+            'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF',
+         amount: '100',
+         price: '10.5',
+         feePaid: '0.5',
+         timestamp: new Date().toISOString(),
+      });
 
-    // Wait for the retry (second request after backoff)
-    await secondRequestPromise;
+      // Wait for the retry (second request after backoff)
+      await secondRequestPromise;
 
-    // Allow time for DB writes after the second response
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Allow time for DB writes after the second response
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Assert callback was called twice
-    expect(requestTimestamps.length).toBe(2);
+      // Assert callback was called twice
+      expect(requestTimestamps.length).toBe(2);
 
-    // Assert second call happened after the configured backoff delay
-    const backoffDelay = requestTimestamps[1] - requestTimestamps[0];
-    expect(backoffDelay).toBeGreaterThanOrEqual(2000);
+      // Assert second call happened after the configured backoff delay
+      const backoffDelay = requestTimestamps[1] - requestTimestamps[0];
+      expect(backoffDelay).toBeGreaterThanOrEqual(2000);
 
-    // Assert webhook event was delivered successfully after retry
-    const events = await prisma.webhookEvent.findMany({
-      where: { webhookId: webhook.id },
-    });
-    expect(events.length).toBeGreaterThan(0);
-    expect(events[0].status).toBe('DELIVERED');
-    expect(events[0].retryCount).toBe(2);
+      // Assert webhook event was delivered successfully after retry
+      const events = await prisma.webhookEvent.findMany({
+         where: { webhookId: webhook.id },
+      });
+      expect(events.length).toBeGreaterThan(0);
+      expect(events[0].status).toBe('DELIVERED');
+      expect(events[0].retryCount).toBe(2);
 
-    // Assert webhook is NOT marked as failing after successful retry
-    const updatedWebhook = await prisma.webhook.findUnique({
-      where: { id: webhook.id },
-    });
-    expect(updatedWebhook?.isFailing).toBe(false);
+      // Assert webhook is NOT marked as failing after successful retry
+      const updatedWebhook = await prisma.webhook.findUnique({
+         where: { id: webhook.id },
+      });
+      expect(updatedWebhook?.isFailing).toBe(false);
 
-    await prisma.webhookEvent.deleteMany({ where: { webhookId: webhook.id } });
-    await prisma.webhook.delete({ where: { id: webhook.id } });
-  });
+      await prisma.webhookEvent.deleteMany({
+         where: { webhookId: webhook.id },
+      });
+      await prisma.webhook.delete({ where: { id: webhook.id } });
+   });
 });

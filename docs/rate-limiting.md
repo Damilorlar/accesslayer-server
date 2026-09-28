@@ -17,12 +17,13 @@ Rate limiting is implemented using the `express-rate-limit` middleware, which re
 
 The default rate limit configuration uses a sliding/fixed window rate limiter based on the client IP address.
 
-| Environment | Limit (Requests) | Window Size | Units | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| **Production** | `1,000` | `15` | minutes | Standard rate limit for API consumers |
-| **Development** / **Test** | `10,000` | `15` | minutes | Relaxed rate limit to facilitate local testing and manual integration tests |
+| Environment                | Limit (Requests) | Window Size | Units   | Description                                                                 |
+| :------------------------- | :--------------- | :---------- | :------ | :-------------------------------------------------------------------------- |
+| **Production**             | `1,000`          | `15`        | minutes | Standard rate limit for API consumers                                       |
+| **Development** / **Test** | `10,000`         | `15`        | minutes | Relaxed rate limit to facilitate local testing and manual integration tests |
 
 The window duration is fixed in code:
+
 - **Default Window:** `15` minutes (`RATE_LIMIT_WINDOW_MS` = `15 * 60 * 1000` milliseconds).
 - **Production Limit:** `1,000` requests per window.
 - **Development/Test Limit:** `10,000` requests per window.
@@ -33,11 +34,11 @@ The window duration is fixed in code:
 
 Every successful and failed API response includes standard HTTP headers defined by the IETF draft RFC for rate limiting. These headers allow client applications to dynamically adjust their request rates.
 
-| Header Name | Type | Description |
-| :--- | :--- | :--- |
-| `RateLimit-Limit` | Integer | The maximum number of allowed requests in the window. |
-| `RateLimit-Remaining` | Integer | The number of remaining requests allowed in the current window. |
-| `RateLimit-Reset` | Integer | The time at which the rate limit resets (in Unix epoch seconds). |
+| Header Name           | Type    | Description                                                      |
+| :-------------------- | :------ | :--------------------------------------------------------------- |
+| `RateLimit-Limit`     | Integer | The maximum number of allowed requests in the window.            |
+| `RateLimit-Remaining` | Integer | The number of remaining requests allowed in the current window.  |
+| `RateLimit-Reset`     | Integer | The time at which the rate limit resets (in Unix epoch seconds). |
 
 > [!NOTE]
 > The legacy headers (e.g. `X-RateLimit-*`) are explicitly disabled (`legacyHeaders: false`) to comply with modern API standards.
@@ -52,7 +53,7 @@ When a client exceeds the allowed request threshold, the server rejects the requ
 
 - **HTTP Status Code:** `429 Too Many Requests`
 - **Response Headers:**
-  - `Retry-After`: The duration in seconds that the client must wait before making another request (e.g., `900` seconds if a client is blocked at the start of a window).
+   - `Retry-After`: The duration in seconds that the client must wait before making another request (e.g., `900` seconds if a client is blocked at the start of a window).
 
 ### Response Body
 
@@ -60,10 +61,10 @@ The response returns a JSON object following the API error pattern:
 
 ```json
 {
-  "type": "RATE_LIMIT_EXCEEDED",
-  "message": "Too many requests, please try again later.",
-  "retryAfterSeconds": 900,
-  "timestamp": "2026-05-29T20:00:00.000Z"
+   "type": "RATE_LIMIT_EXCEEDED",
+   "message": "Too many requests, please try again later.",
+   "retryAfterSeconds": 900,
+   "timestamp": "2026-05-29T20:00:00.000Z"
 }
 ```
 
@@ -76,7 +77,7 @@ The response returns a JSON object following the API error pattern:
 
 ## Custom Per-Endpoint Thresholds
 
-Currently, **all endpoints share the global rate limit**, and there are no custom per-endpoint thresholds configured. 
+Currently, **all endpoints share the global rate limit**, and there are no custom per-endpoint thresholds configured.
 
 If you are developing new endpoints that are computationally expensive or susceptible to abuse (e.g., wallet authentication, payment initiation, email dispatch, heavy database query searches), you should define custom limits.
 
@@ -118,7 +119,11 @@ import { expensiveEndpointLimit } from './expensive.middleware';
 const router = Router();
 
 // Mount custom rate limiter middleware before the controller
-router.post('/process-transaction', expensiveEndpointLimit, processTransactionController);
+router.post(
+   '/process-transaction',
+   expensiveEndpointLimit,
+   processTransactionController
+);
 
 export default router;
 ```

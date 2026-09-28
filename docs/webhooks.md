@@ -87,7 +87,7 @@ All management requests require the following headers for wallet verification:
 
 ## 2. Webhook Event Payload
 
-When a trade occurs, AccessLayer sends an HTTP `POST` request containing a JSON body to the registered `callback_url`.
+When a trade occurs, AccessLayer sends an HTTP `POST` request containing a JSON body to the registered `callback_url`. There are two supported event types — `buy` and `sell` — and both use the same payload shape, distinguished only by the `event_type` field value.
 
 ### Payload Fields
 
@@ -101,7 +101,12 @@ When a trade occurs, AccessLayer sends an HTTP `POST` request containing a JSON 
 | `fee_paid`                | `string` | The protocol/creator fee paid for this trade in XLM.                        | `"0.4650000"`                |
 | `timestamp`               | `string` | The ISO 8601 UTC timestamp of the trade event transaction.                  | `"2026-06-23T04:00:00.000Z"` |
 
-### Example Payload
+> [!NOTE]
+> **Nullable/Optional Fields:** None of the fields above are ever `null` or absent. Every field is populated on every dispatch for both event types below — there is no partial or conditional payload shape to account for.
+
+### `buy` Event
+
+Fired when a trader purchases a creator's keys. `buyer_or_seller_address` holds the **buyer's** wallet address.
 
 ```json
 {
@@ -112,6 +117,22 @@ When a trade occurs, AccessLayer sends an HTTP `POST` request containing a JSON 
    "price": "10.5000000",
    "fee_paid": "0.5000000",
    "timestamp": "2026-06-23T04:00:00.000Z"
+}
+```
+
+### `sell` Event
+
+Fired when a trader sells a creator's keys. `buyer_or_seller_address` holds the **seller's** wallet address.
+
+```json
+{
+   "event_type": "sell",
+   "creator_id": "GCSW65D4G56DF8B2N7M9L3K4J2XDF",
+   "buyer_or_seller_address": "GDD3DDK4J5H5D9S8A7P6O5I4U8LKF",
+   "amount": "50.0000000",
+   "price": "12.2500000",
+   "fee_paid": "0.3062500",
+   "timestamp": "2026-06-23T05:15:00.000Z"
 }
 ```
 

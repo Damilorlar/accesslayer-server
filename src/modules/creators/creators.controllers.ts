@@ -1,6 +1,8 @@
 import { AsyncController } from '../../types/auth.types';
 import { CreatorListQuerySchema } from './creators.schemas';
 import { fetchCreatorList } from './creators.utils';
+import { prisma } from '../../utils/prisma.utils';
+import { compute24hVolume } from '../../utils/trading-volume.utils';
 import {
    serializeCreatorListResponse,
    CreatorListResponse,
@@ -26,6 +28,16 @@ import {
    creatorProfileExists,
    getCreatorProfile,
 } from '../creator/creator-profile.service';
+import { MAX_PAGE_SIZE } from '../../constants/pagination.constants';
+import { StellarAddressSchema } from '../wallet/wallet.schemas';
+import {
+   fetchCreatorPortfolioKeys,
+   findCreatorPortfolio,
+   getCreatorPortfolioStats,
+} from './creator-portfolio.service';
+
+/** Hard cap applied to every leaderboard response regardless of caller-supplied limit. */
+const LEADERBOARD_MAX_ENTRIES = MAX_PAGE_SIZE; // 100
 
 /**
  * Controller for GET /api/v1/creators
@@ -68,12 +80,15 @@ export const httpListCreators: AsyncController = async (req, res, next) => {
       // Fetch creators and total count
       const [creators, total] = await fetchCreatorList(validatedQuery);
 
-      const response: CreatorListResponse = serializeCreatorListResponse(
+      const response: CreatorListResponse = await serializeCreatorListResponse(
          creators,
          buildOffsetPaginationMeta({
             limit: validatedQuery.limit,
             offset: validatedQuery.offset,
             total,
+            ...(validatedQuery.search !== undefined && total === 0
+               ? { searchTerm: validatedQuery.search }
+               : {}),
          })
       );
 
@@ -115,21 +130,50 @@ function categorizeParseError(
 export const httpGetCreatorStats: AsyncController = async (req, res, next) => {
    try {
       const rawId = req.params.id;
-      const _creatorId = parseCreatorId(
-         Array.isArray(rawId) ? rawId[0] : rawId
-      );
+      const parsedId = parseCreatorId(Array.isArray(rawId) ? rawId[0] : rawId);
+      const creatorIdStr = String(parsedId);
 
-      // TODO: Fetch actual creator metrics from database/service using _creatorId
-      // For now, return placeholder data
-      const placeholderMetrics = {
-         holderCount: 0,
-         totalSupply: 0,
+      const creator = await prisma.creatorProfile.findFirst({
+         where: { OR: [{ id: creatorIdStr }, { handle: creatorIdStr }] },
+         select: { id: true },
+      });
+      const resolvedId = creator ? creator.id : creatorIdStr;
+
+      const [holderCount, supplyAggregate, priceSnapshot] = await Promise.all([
+         prisma.keyOwnership.count({
+            where: {
+               creatorId: resolvedId,
+               balance: { gt: 0 },
+            },
+         }),
+         // Bug fix (#678): totalSupply was previously hardcoded to 0 instead
+         // of being derived from the ownership read model, so it never
+         // reflected keys minted by buy transactions.
+         prisma.keyOwnership.aggregate({
+            where: { creatorId: resolvedId },
+            _sum: { balance: true },
+         }),
+         prisma.creatorPriceSnapshot.findUnique({
+            where: { creatorId: resolvedId },
+            select: { currentPrice: true },
+         }),
+      ]);
+
+      const totalSupply = Number(supplyAggregate._sum.balance ?? 0);
+      const currentPrice = priceSnapshot
+         ? priceSnapshot.currentPrice.toString()
+         : null;
+
+      const metrics = {
+         holderCount,
+         totalSupply,
          totalVolume: 0,
+         currentPrice,
          lastActivityAt: undefined,
       };
 
       // Serialize using the public stats mapper
-      const stats = mapPublicCreatorStats(placeholderMetrics);
+      const stats = mapPublicCreatorStats(metrics);
 
       attachTimestampHeader(res);
       sendSuccess(res, stats);
@@ -148,6 +192,34 @@ export const httpGetCreator: AsyncController = async (req, res, next) => {
       const rawId = req.params.id;
       const creatorId = Array.isArray(rawId) ? rawId[0] : rawId;
 
+      if (StellarAddressSchema.safeParse(creatorId).success) {
+         const portfolio = await findCreatorPortfolio(creatorId);
+         if (portfolio.length === 0) return sendNotFound(res, 'Creator');
+
+         const [stats] = await Promise.all([
+            getCreatorPortfolioStats(creatorId),
+         ]);
+         const profile = portfolio[0];
+         res.setHeader('Cache-Control', 'public, max-age=60');
+         attachTimestampHeader(res);
+         return sendSuccess(
+            res,
+            {
+               wallet: creatorId,
+               profile: {
+                  handle: profile.handle,
+                  displayName: profile.displayName,
+                  bio: profile.bio,
+                  avatarUrl: profile.avatarUrl,
+                  createdAt: profile.createdAt,
+               },
+               stats,
+            },
+            200,
+            'Creator portfolio retrieved successfully'
+         );
+      }
+
       if (!(await creatorProfileExists(creatorId))) {
          return sendNotFound(res, 'Creator');
       }
@@ -155,6 +227,286 @@ export const httpGetCreator: AsyncController = async (req, res, next) => {
       const profile = await getCreatorProfile(creatorId);
       attachTimestampHeader(res);
       sendSuccess(res, profile, 200, 'Creator retrieved successfully');
+   } catch (error) {
+      next(error);
+   }
+};
+
+/** Controller for GET /api/v1/creators/:wallet/keys. */
+export const httpGetCreatorPortfolioKeys: AsyncController = async (
+   req,
+   res,
+   next
+) => {
+   try {
+      const rawWallet = req.params.wallet;
+      const wallet = Array.isArray(rawWallet) ? rawWallet[0] : rawWallet;
+      if (!StellarAddressSchema.safeParse(wallet).success) {
+         return sendValidationError(res, 'Invalid wallet address', [
+            {
+               field: 'wallet',
+               message: 'A valid Stellar wallet address is required',
+            },
+         ]);
+      }
+
+      const rawLimit = req.query.limit;
+      const rawCursor = req.query.cursor;
+      if (
+         (rawLimit !== undefined && typeof rawLimit !== 'string') ||
+         (rawCursor !== undefined && typeof rawCursor !== 'string')
+      ) {
+         return sendValidationError(res, 'Invalid keys pagination parameters', [
+            {
+               field: 'pagination',
+               message: 'limit and cursor must each be provided once',
+            },
+         ]);
+      }
+
+      const page = await fetchCreatorPortfolioKeys(wallet, rawLimit, rawCursor);
+      attachTimestampHeader(res);
+      return sendSuccess(res, page, 200, 'Creator keys retrieved successfully');
+   } catch (error) {
+      if (
+         error instanceof Error &&
+         error.message.startsWith('Invalid keys pagination')
+      ) {
+         return sendValidationError(res, 'Invalid keys pagination parameters', [
+            { field: 'pagination', message: error.message },
+         ]);
+      }
+      next(error);
+   }
+};
+
+/**
+ * Controller for GET /api/v1/creators/leaderboard
+ *
+ * Returns creators ranked by holder count descending. Ties are broken
+ * alphabetically by creator (Stellar wallet) address so the ordering is
+ * stable across requests regardless of database iteration order.
+ *
+ * The response is capped at LEADERBOARD_MAX_ENTRIES (100) regardless of
+ * how many creators exist in the database or what `limit` the caller
+ * passes. Passing a `limit` query param above 100 is silently clamped to
+ * 100; passing a value below 1 is clamped to 1. The total number of
+ * creators in the database is always returned as `total_count` so clients
+ * can tell whether more entries exist beyond the cap.
+ */
+export const httpGetCreatorLeaderboard: AsyncController = async (
+   req,
+   res,
+   next
+) => {
+   try {
+      // Parse and clamp the caller-supplied limit.
+      // Any value above LEADERBOARD_MAX_ENTRIES is silently capped.
+      const rawLimit = parseInt(
+         Array.isArray(req.query.limit)
+            ? String(req.query.limit[0])
+            : String(req.query.limit ?? ''),
+         10
+      );
+      const effectiveLimit = isNaN(rawLimit)
+         ? LEADERBOARD_MAX_ENTRIES
+         : Math.min(Math.max(1, rawLimit), LEADERBOARD_MAX_ENTRIES);
+
+      const creators = await prisma.creatorProfile.findMany({
+         select: {
+            id: true,
+            handle: true,
+            priceSnapshot: {
+               select: { currentPrice: true },
+            },
+            user: {
+               select: {
+                  stellarWallet: {
+                     select: { address: true },
+                  },
+               },
+            },
+         },
+      });
+
+      const entries = await Promise.all(
+         creators.map(async creator => {
+            const holderCount = await prisma.keyOwnership.count({
+               where: {
+                  creatorId: creator.id,
+                  balance: { gt: 0 },
+               },
+            });
+
+            const address =
+               (creator as any).user?.stellarWallet?.address ?? creator.handle;
+            const currentPrice = (creator as any).priceSnapshot
+               ? (creator as any).priceSnapshot.currentPrice.toString()
+               : '0';
+
+            return {
+               creator: address as string,
+               holder_count: holderCount,
+               current_price: currentPrice,
+            };
+         })
+      );
+
+      entries.sort((a, b) => {
+         if (b.holder_count !== a.holder_count) {
+            return b.holder_count - a.holder_count;
+         }
+         // Stable, deterministic tie-break: ascending alphabetical order
+         // by creator address.
+         if (a.creator < b.creator) return -1;
+         if (a.creator > b.creator) return 1;
+         return 0;
+      });
+
+      // total_count reflects all creators before applying the cap so
+      // clients know whether entries were truncated.
+      const total_count = entries.length;
+
+      const items = entries.slice(0, effectiveLimit).map((entry, index) => ({
+         rank: index + 1,
+         ...entry,
+      }));
+
+      attachTimestampHeader(res);
+      sendSuccess(res, { items, total_count });
+   } catch (error) {
+      next(error);
+   }
+};
+
+/**
+ * Controller for GET /api/v1/creators/:id/analytics
+ *
+ * Returns buy volume (total XLM spent in stroops) and unique buyer count
+ * aggregated from the creator's trade history.
+ * Requires wallet ownership — only the authenticated creator can access
+ * their own analytics.
+ */
+export const httpGetCreatorAnalytics: AsyncController = async (
+   req,
+   res,
+   next
+) => {
+   try {
+      const rawId = req.params.id;
+      const creatorId = Array.isArray(rawId) ? rawId[0] : rawId;
+
+      // Resolve the creator profile to get the canonical ID
+      const creator = await prisma.creatorProfile.findFirst({
+         where: { OR: [{ id: creatorId }, { handle: creatorId }] },
+         select: { id: true },
+      });
+      const resolvedId = creator ? creator.id : creatorId;
+
+      // Fetch all trades for this creator
+      const trades = await prisma.trade.findMany({
+         where: { creatorId: resolvedId },
+         select: {
+            buyer: true,
+            price: true,
+         },
+      });
+
+      // Compute total buy volume (sum of prices, in stroops)
+      let buyVolume = 0n;
+      const uniqueBuyers = new Set<string>();
+
+      for (const trade of trades) {
+         const price = BigInt(trade.price);
+         buyVolume += price;
+         uniqueBuyers.add(trade.buyer);
+      }
+
+      const analytics = {
+         buyVolume: buyVolume.toString(),
+         uniqueBuyers: uniqueBuyers.size,
+      };
+
+      attachTimestampHeader(res);
+      sendSuccess(res, analytics);
+   } catch (error) {
+      next(error);
+   }
+};
+
+/**
+ * Controller for GET /api/v1/creators/trending
+ *
+ * Returns creators ordered by 24h trading volume descending.
+ * Respects pagination limit parameters.
+ */
+export const httpGetTrendingCreators: AsyncController = async (
+   req,
+   res,
+   next
+) => {
+   try {
+      const ctx = buildCreatorListRequestContext(req);
+
+      const parsed = parsePublicQuery(CreatorListQuerySchema, ctx.query, {
+         debugContext: 'creator-trending-query',
+      });
+      if (!parsed.ok) {
+         return sendValidationError(
+            res,
+            'Invalid query parameters',
+            parsed.details
+         );
+      }
+      const validatedQuery = parsed.data;
+      const limit = validatedQuery.limit;
+
+      // Fetch all creators
+      const creators = await prisma.creatorProfile.findMany({
+         select: {
+            id: true,
+            handle: true,
+            displayName: true,
+            avatarUrl: true,
+            isVerified: true,
+            createdAt: true,
+            updatedAt: true,
+         },
+      });
+
+      // Compute volume for each creator
+      const creatorsWithVolume = await Promise.all(
+         creators.map(async creator => {
+            const volume = await compute24hVolume(creator.id);
+            return {
+               id: creator.id,
+               handle: creator.handle,
+               displayName: creator.displayName,
+               avatarUrl: creator.avatarUrl,
+               isVerified: creator.isVerified,
+               createdAt: creator.createdAt.toISOString(),
+               updatedAt: creator.updatedAt.toISOString(),
+               volume_24h: volume.toString(),
+            };
+         })
+      );
+
+      // Sort by volume descending
+      creatorsWithVolume.sort(
+         (a: { volume_24h: string }, b: { volume_24h: string }) => {
+            const volA = BigInt(a.volume_24h);
+            const volB = BigInt(b.volume_24h);
+            if (volB > volA) return 1;
+            if (volB < volA) return -1;
+            return 0;
+         }
+      );
+
+      // Slice list based on limit
+      const items = creatorsWithVolume.slice(0, limit);
+
+      attachTimestampHeader(res);
+      sendSuccess(res, { items });
    } catch (error) {
       next(error);
    }

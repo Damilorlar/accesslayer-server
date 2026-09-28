@@ -22,8 +22,14 @@ function run() {
    {
       const res = mockRes();
       let called = false;
-      const next: NextFunction = () => { called = true; };
-      deprecate({ deprecatedSince: '2026-01-01T00:00:00Z' })(mockReq(), res, next);
+      const next: NextFunction = () => {
+         called = true;
+      };
+      deprecate({ deprecatedSince: '2026-01-01T00:00:00Z' })(
+         mockReq(),
+         res,
+         next
+      );
       assert.equal(res.headers['Deprecation'], '2026-01-01T00:00:00Z');
       assert.ok(called, 'next() should be called');
    }
@@ -41,7 +47,11 @@ function run() {
    // omits Sunset header when not provided
    {
       const res = mockRes();
-      deprecate({ deprecatedSince: '2026-01-01T00:00:00Z' })(mockReq(), res, () => {});
+      deprecate({ deprecatedSince: '2026-01-01T00:00:00Z' })(
+         mockReq(),
+         res,
+         () => {}
+      );
       assert.ok(!('Sunset' in res.headers), 'Sunset should not be set');
    }
 
@@ -52,13 +62,20 @@ function run() {
          deprecatedSince: '2026-01-01T00:00:00Z',
          link: '/api/v2/creators',
       })(mockReq(), res, () => {});
-      assert.equal(res.headers['Link'], '</api/v2/creators>; rel="successor-version"');
+      assert.equal(
+         res.headers['Link'],
+         '</api/v2/creators>; rel="successor-version"'
+      );
    }
 
    // omits Link header when not provided
    {
       const res = mockRes();
-      deprecate({ deprecatedSince: '2026-01-01T00:00:00Z' })(mockReq(), res, () => {});
+      deprecate({ deprecatedSince: '2026-01-01T00:00:00Z' })(
+         mockReq(),
+         res,
+         () => {}
+      );
       assert.ok(!('Link' in res.headers), 'Link should not be set');
    }
 

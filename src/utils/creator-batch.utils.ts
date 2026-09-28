@@ -31,9 +31,9 @@ export async function fetchCreatorProfilesByIds(
    });
 
    const map = new Map<string, CreatorProfile>();
-   records.forEach((r) => map.set(r.id, r as CreatorProfile));
+   records.forEach(r => map.set(r.id, r as CreatorProfile));
 
-   return ids.map((id) => map.get(id) ?? null);
+   return ids.map(id => map.get(id) ?? null);
 }
 
 export { CREATOR_PROFILE_SELECT };

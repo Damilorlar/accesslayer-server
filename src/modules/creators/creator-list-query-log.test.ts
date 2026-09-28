@@ -100,7 +100,10 @@ describe('fetchCreatorList – structured debug log (#550)', () => {
    // ── result_count ──────────────────────────────────────────────────────────────
 
    it('log object contains result_count equal to the number of returned creators', async () => {
-      mockPrisma.creatorProfile.findMany.mockResolvedValue([CREATOR_ROW, CREATOR_ROW]);
+      mockPrisma.creatorProfile.findMany.mockResolvedValue([
+         CREATOR_ROW,
+         CREATOR_ROW,
+      ]);
       mockPrisma.creatorProfile.count.mockResolvedValue(2);
 
       await fetchCreatorList(BASE_QUERY as any);

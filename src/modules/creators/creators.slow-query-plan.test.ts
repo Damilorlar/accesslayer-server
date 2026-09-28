@@ -69,7 +69,8 @@ describe('fetchCreatorList — slow query plan logging', () => {
 
    afterEach(() => {
       (envConfig as any).MODE = originalMode;
-      (envConfig as any).CREATOR_LIST_SLOW_QUERY_THRESHOLD_MS = originalThreshold;
+      (envConfig as any).CREATOR_LIST_SLOW_QUERY_THRESHOLD_MS =
+         originalThreshold;
       jest.restoreAllMocks();
    });
 
@@ -89,7 +90,9 @@ describe('fetchCreatorList — slow query plan logging', () => {
       });
 
       it('includes queryPlan in the warn log when the plan is captured', async () => {
-         const fakePlan = [{ 'Node Type': 'Seq Scan', 'Relation Name': 'CreatorProfile' }];
+         const fakePlan = [
+            { 'Node Type': 'Seq Scan', 'Relation Name': 'CreatorProfile' },
+         ];
          captureQueryPlanSpy.mockResolvedValue(fakePlan);
 
          await fetchCreatorList(makeQuery());
@@ -115,7 +118,9 @@ describe('fetchCreatorList — slow query plan logging', () => {
          captureQueryPlanSpy.mockRejectedValue(new Error('db error'));
 
          // fetchCreatorList should not throw even if plan capture rejects
-         await expect(fetchCreatorList(makeQuery())).rejects.toThrow('db error');
+         await expect(fetchCreatorList(makeQuery())).rejects.toThrow(
+            'db error'
+         );
          // The warn is emitted before the await resolves in this edge case,
          // but the real guard is inside captureQueryPlan itself (it never throws).
          // This test documents that captureQueryPlan is expected to swallow errors.

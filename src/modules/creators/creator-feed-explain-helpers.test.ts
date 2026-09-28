@@ -54,11 +54,15 @@ describe('buildCreatorFeedExplainParams()', () => {
    });
 
    it('returns [true] for isVerified=true', () => {
-      expect(buildCreatorFeedExplainParams({ isVerified: true })).toEqual([true]);
+      expect(buildCreatorFeedExplainParams({ isVerified: true })).toEqual([
+         true,
+      ]);
    });
 
    it('returns [false] for isVerified=false', () => {
-      expect(buildCreatorFeedExplainParams({ isVerified: false })).toEqual([false]);
+      expect(buildCreatorFeedExplainParams({ isVerified: false })).toEqual([
+         false,
+      ]);
    });
 
    it('returns two ILIKE params wrapping the search term', () => {

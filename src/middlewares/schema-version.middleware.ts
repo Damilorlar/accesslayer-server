@@ -1,7 +1,10 @@
 // src/middlewares/schema-version.middleware.ts
 import { Request, Response, NextFunction } from 'express';
 import { envConfig } from '../config';
-import { REQUEST_SCHEMA_VERSION, SCHEMA_VERSION_HEADER } from '../constants/schema.constants';
+import {
+   REQUEST_SCHEMA_VERSION,
+   SCHEMA_VERSION_HEADER,
+} from '../constants/schema.constants';
 
 /**
  * Middleware that adds a schema version header to the response.

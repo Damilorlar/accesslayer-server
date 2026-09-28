@@ -47,7 +47,8 @@ async function tableExists(
 export async function cleanupExpiredOwnershipSnapshots(
    deps?: Partial<OwnershipSnapshotCleanupDeps>
 ): Promise<OwnershipSnapshotCleanupResult> {
-   const queryRawUnsafe = deps?.queryRawUnsafe ?? prisma.$queryRawUnsafe.bind(prisma);
+   const queryRawUnsafe =
+      deps?.queryRawUnsafe ?? prisma.$queryRawUnsafe.bind(prisma);
    const executeRawUnsafe =
       deps?.executeRawUnsafe ?? prisma.$executeRawUnsafe.bind(prisma);
    const now = deps?.now ?? (() => new Date());

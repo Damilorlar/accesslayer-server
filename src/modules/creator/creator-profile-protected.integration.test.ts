@@ -46,11 +46,13 @@ jest.mock('../../utils/wallet-ownership.utils', () => ({
 
 jest.mock('./creator-profile.service', () => ({
    getCreatorProfile: jest.fn(),
-   upsertCreatorProfile: jest.fn(async (creatorId: string, payload: unknown) => ({
-      creatorId,
-      acceptedProfile: payload,
-      metadata: { source: 'database', persisted: true },
-   })),
+   upsertCreatorProfile: jest.fn(
+      async (creatorId: string, payload: unknown) => ({
+         creatorId,
+         acceptedProfile: payload,
+         metadata: { source: 'database', persisted: true },
+      })
+   ),
 }));
 
 import supertest from 'supertest';

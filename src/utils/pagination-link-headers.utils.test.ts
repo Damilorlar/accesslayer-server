@@ -90,7 +90,9 @@ describe('buildPaginationLinkHeader()', () => {
          total: 20,
       });
       const nextLink = result?.split(',')[0] ?? '';
-      const params = new URLSearchParams(nextLink.match(/\?([^>]+)/)?.[1] ?? '');
+      const params = new URLSearchParams(
+         nextLink.match(/\?([^>]+)/)?.[1] ?? ''
+      );
       expect(params.getAll('offset')).toHaveLength(1);
       expect(params.getAll('limit')).toHaveLength(1);
    });
@@ -119,7 +121,7 @@ describe('attachPaginationLinkHeaders()', () => {
       });
       expect(res.set).toHaveBeenCalledWith(
          PAGINATION_LINK_HEADER,
-         expect.stringContaining('rel="next"'),
+         expect.stringContaining('rel="next"')
       );
    });
 

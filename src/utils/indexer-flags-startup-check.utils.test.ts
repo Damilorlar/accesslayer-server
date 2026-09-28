@@ -14,7 +14,9 @@ import {
    validateIndexerFeatureFlags,
 } from './indexer-flags-startup-check.utils';
 
-function makeConfig(overrides: Partial<IndexerFlagsConfig> = {}): IndexerFlagsConfig {
+function makeConfig(
+   overrides: Partial<IndexerFlagsConfig> = {}
+): IndexerFlagsConfig {
    return {
       ENABLE_INDEXER_DEDUPE: true,
       ENABLE_INDEXER_DLQ: true,
@@ -32,7 +34,9 @@ describe('validateIndexerFeatureFlags()', () => {
 
    it('rejects a jitter factor below zero', () => {
       try {
-         validateIndexerFeatureFlags(makeConfig({ INDEXER_JITTER_FACTOR: -0.5 }));
+         validateIndexerFeatureFlags(
+            makeConfig({ INDEXER_JITTER_FACTOR: -0.5 })
+         );
          fail('expected to throw');
       } catch (err) {
          expect(err).toBeInstanceOf(IndexerFlagsConfigError);
@@ -119,15 +123,15 @@ describe('validateIndexerFeatureFlags()', () => {
          fail('expected to throw');
       } catch (err) {
          expect(err).toBeInstanceOf(IndexerFlagsConfigError);
-         expect((err as IndexerFlagsConfigError).issues.length).toBeGreaterThanOrEqual(3);
+         expect(
+            (err as IndexerFlagsConfigError).issues.length
+         ).toBeGreaterThanOrEqual(3);
       }
    });
 
    it('error message lists every issue with bullet prefixes', () => {
       try {
-         validateIndexerFeatureFlags(
-            makeConfig({ INDEXER_JITTER_FACTOR: 9 })
-         );
+         validateIndexerFeatureFlags(makeConfig({ INDEXER_JITTER_FACTOR: 9 }));
          fail('expected to throw');
       } catch (err) {
          expect((err as Error).message).toMatch(

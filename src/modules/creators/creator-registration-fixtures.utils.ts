@@ -11,7 +11,10 @@ export function buildCreatorRegistrationFixtures(
    startTimestamp: string | Date,
    stepDays = 1
 ): CreatorProfile[] {
-   const start = typeof startTimestamp === 'string' ? new Date(startTimestamp) : startTimestamp;
+   const start =
+      typeof startTimestamp === 'string'
+         ? new Date(startTimestamp)
+         : startTimestamp;
    const stepMs = stepDays * 24 * 60 * 60 * 1000;
 
    return Array.from({ length: count }, (_, index) => {

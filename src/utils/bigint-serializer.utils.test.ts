@@ -1,5 +1,10 @@
 import { strict as assert } from 'assert';
-import { bigIntReplacer, safeJsonStringify, sanitizeBigInts, serializeBigInt } from './bigint-serializer.utils';
+import {
+   bigIntReplacer,
+   safeJsonStringify,
+   sanitizeBigInts,
+   serializeBigInt,
+} from './bigint-serializer.utils';
 
 function run() {
    // bigIntReplacer converts BigInt to string
@@ -26,8 +31,16 @@ function run() {
    assert.equal(sanitizeBigInts(5n), '5');
 
    // sanitizeBigInts – nested object
-   const sanitized = sanitizeBigInts({ id: 1n, nested: { amount: 500n }, label: 'ok' });
-   assert.deepEqual(sanitized, { id: '1', nested: { amount: '500' }, label: 'ok' });
+   const sanitized = sanitizeBigInts({
+      id: 1n,
+      nested: { amount: 500n },
+      label: 'ok',
+   });
+   assert.deepEqual(sanitized, {
+      id: '1',
+      nested: { amount: '500' },
+      label: 'ok',
+   });
 
    // sanitizeBigInts – array
    assert.deepEqual(sanitizeBigInts([1n, 2n, 3n]), ['1', '2', '3']);
@@ -40,8 +53,16 @@ function run() {
    assert.equal(serializeBigInt(9007199254740993n), '9007199254740993');
 
    // serializeBigInt – nested BigInt in object converts correctly
-   const serializedObj = serializeBigInt({ id: 1n, nested: { amount: 500n }, label: 'ok' });
-   assert.deepEqual(serializedObj, { id: '1', nested: { amount: '500' }, label: 'ok' });
+   const serializedObj = serializeBigInt({
+      id: 1n,
+      nested: { amount: 500n },
+      label: 'ok',
+   });
+   assert.deepEqual(serializedObj, {
+      id: '1',
+      nested: { amount: '500' },
+      label: 'ok',
+   });
 
    // serializeBigInt – BigInt inside an array converts correctly
    assert.deepEqual(serializeBigInt([1n, 2n, 3n]), ['1', '2', '3']);

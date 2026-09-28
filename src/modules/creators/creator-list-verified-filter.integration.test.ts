@@ -96,7 +96,9 @@ describe('GET /api/v1/creators — verified status filter', () => {
    });
 
    it('returns only unverified creators when filtered by verified=false', async () => {
-      const unverifiedCreators = ALL_FIXTURES.filter(c => c.isVerified === false);
+      const unverifiedCreators = ALL_FIXTURES.filter(
+         c => c.isVerified === false
+      );
       jest
          .spyOn(creatorsUtils, 'fetchCreatorList')
          .mockResolvedValue([unverifiedCreators, unverifiedCreators.length]);

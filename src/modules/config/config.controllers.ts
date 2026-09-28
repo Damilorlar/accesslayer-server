@@ -32,10 +32,7 @@ interface ProtocolConfig {
    };
 }
 
-export const httpGetProtocolConfig = (
-   _req: Request,
-   res: Response
-): void => {
+export const httpGetProtocolConfig = (_req: Request, res: Response): void => {
    const config: ProtocolConfig = {
       environment: envConfig.MODE,
       apiVersion: 'v1',
@@ -58,4 +55,3 @@ export const httpGetProtocolConfig = (
       data: config,
    });
 };
-

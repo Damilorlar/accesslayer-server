@@ -9,7 +9,8 @@ const DEFAULT_PROTECTED_ROUTE_HEADERS: Record<
    string
 > = {
    'x-admin-id': 'admin-test-1',
-   'x-wallet-address': 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+   'x-wallet-address':
+      'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
 };
 
 /**
@@ -19,13 +20,16 @@ const DEFAULT_PROTECTED_ROUTE_HEADERS: Record<
  * for a specific key.
  */
 export function withProtectedRouteHeaders<
-   T extends { set(name: string, value: string): T; set(headers: Record<string, string>): T }
+   T extends {
+      set(name: string, value: string): T;
+      set(headers: Record<string, string>): T;
+   },
 >(request: T, overrides: ProtectedRouteHeaderOverrides = {}): T {
    const headers: Partial<Record<ProtectedRouteHeaderName, string>> = {
       ...DEFAULT_PROTECTED_ROUTE_HEADERS,
    };
 
-   (Object.keys(overrides) as ProtectedRouteHeaderName[]).forEach((name) => {
+   (Object.keys(overrides) as ProtectedRouteHeaderName[]).forEach(name => {
       const value = overrides[name];
       if (value === undefined || value === null) {
          delete headers[name];

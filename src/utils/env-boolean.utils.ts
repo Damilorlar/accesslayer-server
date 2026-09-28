@@ -14,18 +14,18 @@ const TRUE_VALUES = new Set(['true', '1', 'yes']);
 const FALSE_VALUES = new Set(['false', '0', 'no']);
 
 export class EnvBooleanParseError extends Error {
-  public readonly varName: string;
-  public readonly rawValue: string;
+   public readonly varName: string;
+   public readonly rawValue: string;
 
-  constructor(varName: string, rawValue: string) {
-    super(
-      `Cannot parse env var "${varName}" as boolean: received "${rawValue}". ` +
-        `Accepted values: "true", "false", "1", "0", "yes", "no".`
-    );
-    this.name = 'EnvBooleanParseError';
-    this.varName = varName;
-    this.rawValue = rawValue;
-  }
+   constructor(varName: string, rawValue: string) {
+      super(
+         `Cannot parse env var "${varName}" as boolean: received "${rawValue}". ` +
+            `Accepted values: "true", "false", "1", "0", "yes", "no".`
+      );
+      this.name = 'EnvBooleanParseError';
+      this.varName = varName;
+      this.rawValue = rawValue;
+   }
 }
 
 /**
@@ -37,10 +37,10 @@ export class EnvBooleanParseError extends Error {
  * @throws {EnvBooleanParseError} when the value is not a recognized boolean string
  */
 export function normalizeEnvBoolean(varName: string, value: string): boolean {
-  const normalized = value.trim().toLowerCase();
+   const normalized = value.trim().toLowerCase();
 
-  if (TRUE_VALUES.has(normalized)) return true;
-  if (FALSE_VALUES.has(normalized)) return false;
+   if (TRUE_VALUES.has(normalized)) return true;
+   if (FALSE_VALUES.has(normalized)) return false;
 
-  throw new EnvBooleanParseError(varName, value);
+   throw new EnvBooleanParseError(varName, value);
 }

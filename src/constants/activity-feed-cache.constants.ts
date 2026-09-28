@@ -13,15 +13,16 @@ import { PUBLIC_ENDPOINT_CACHE_SECONDS } from './public-endpoint-cache.constants
  * to reduce database load. A 2-minute cache provides a balance between
  * freshness and performance.
  */
-export const ACTIVITY_FEED_CACHE_MAX_AGE_SECONDS = PUBLIC_ENDPOINT_CACHE_SECONDS.short;
+export const ACTIVITY_FEED_CACHE_MAX_AGE_SECONDS =
+   PUBLIC_ENDPOINT_CACHE_SECONDS.short;
 
 /**
  * Cache control preset for the activity feed endpoint.
  */
 export const ACTIVITY_FEED_CACHE_PRESET = {
-    maxAge: ACTIVITY_FEED_CACHE_MAX_AGE_SECONDS,
-    type: 'public' as const,
-    staleIfError: 86400, // 24 hours
+   maxAge: ACTIVITY_FEED_CACHE_MAX_AGE_SECONDS,
+   type: 'public' as const,
+   staleIfError: 86400, // 24 hours
 } as const;
 
 /**

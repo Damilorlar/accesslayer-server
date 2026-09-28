@@ -29,45 +29,59 @@ describe('migration-checksum.utils', () => {
    it('should skip if migrations directory does not exist', async () => {
       mockFs.existsSync.mockReturnValue(false);
       await verifyMigrationChecksums();
-      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('not found'));
+      expect(logger.warn).toHaveBeenCalledWith(
+         expect.stringContaining('not found')
+      );
    });
 
    it('should skip if migrations table does not exist', async () => {
-      mockPrisma.$queryRawUnsafe.mockRejectedValueOnce(new Error('Table not found'));
+      mockPrisma.$queryRawUnsafe.mockRejectedValueOnce(
+         new Error('Table not found')
+      );
       await verifyMigrationChecksums();
-      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('table not found'));
+      expect(logger.info).toHaveBeenCalledWith(
+         expect.stringContaining('table not found')
+      );
    });
 
    it('should pass if checksums match', async () => {
       mockPrisma.$queryRawUnsafe
          .mockResolvedValueOnce([{}]) // Table check
          .mockResolvedValueOnce([
-            { migration_name: '20240101_init', checksum: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' } // SHA256 of empty string (normalized)
+            {
+               migration_name: '20240101_init',
+               checksum:
+                  'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+            }, // SHA256 of empty string (normalized)
          ]);
 
       mockFs.readdirSync.mockReturnValue([
-         { name: '20240101_init', isDirectory: () => true }
+         { name: '20240101_init', isDirectory: () => true },
       ] as any);
       mockFs.readFileSync.mockReturnValue('');
 
       await verifyMigrationChecksums();
 
-      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('Verified checksums'));
+      expect(logger.info).toHaveBeenCalledWith(
+         expect.stringContaining('Verified checksums')
+      );
    });
 
    it('should throw error if checksum mismatch detected', async () => {
       mockPrisma.$queryRawUnsafe
          .mockResolvedValueOnce([{}]) // Table check
          .mockResolvedValueOnce([
-            { migration_name: '20240101_init', checksum: 'wrong-checksum' }
+            { migration_name: '20240101_init', checksum: 'wrong-checksum' },
          ]);
 
       mockFs.readdirSync.mockReturnValue([
-         { name: '20240101_init', isDirectory: () => true }
+         { name: '20240101_init', isDirectory: () => true },
       ] as any);
       mockFs.readFileSync.mockReturnValue('some content');
 
-      await expect(verifyMigrationChecksums()).rejects.toThrow('Migration checksum mismatch');
+      await expect(verifyMigrationChecksums()).rejects.toThrow(
+         'Migration checksum mismatch'
+      );
       expect(logger.error).toHaveBeenCalled();
    });
 
@@ -77,12 +91,14 @@ describe('migration-checksum.utils', () => {
          .mockResolvedValueOnce([]); // No migrations in DB
 
       mockFs.readdirSync.mockReturnValue([
-         { name: '20240101_init', isDirectory: () => true }
+         { name: '20240101_init', isDirectory: () => true },
       ] as any);
       mockFs.readFileSync.mockReturnValue('new content');
 
       await verifyMigrationChecksums();
 
-      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('Verified checksums for 0 migrations'));
+      expect(logger.info).toHaveBeenCalledWith(
+         expect.stringContaining('Verified checksums for 0 migrations')
+      );
    });
 });

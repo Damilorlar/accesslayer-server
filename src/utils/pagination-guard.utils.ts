@@ -1,4 +1,7 @@
-import { MAX_PAGE_SIZE, MIN_PAGE_SIZE } from '../constants/pagination.constants';
+import {
+   MAX_PAGE_SIZE,
+   MIN_PAGE_SIZE,
+} from '../constants/pagination.constants';
 
 /**
  * Error thrown when page size exceeds the maximum allowed limit.
@@ -15,7 +18,9 @@ export class PageSizeExceededError extends Error {
  */
 export class PageSizeTooSmallError extends Error {
    constructor(limit: number, minLimit: number = MIN_PAGE_SIZE) {
-      super(`Page size limit (${limit}) is below minimum allowed (${minLimit})`);
+      super(
+         `Page size limit (${limit}) is below minimum allowed (${minLimit})`
+      );
       this.name = 'PageSizeTooSmallError';
    }
 }

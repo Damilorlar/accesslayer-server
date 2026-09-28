@@ -66,8 +66,7 @@ describe('requireCreatorProfileOwnership', () => {
 
    it('returns 400 when the wallet address has invalid characters', async () => {
       const req = buildReq({
-         address:
-            'G!!!!!AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+         address: 'G!!!!!AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
          creatorId: 'alice',
       });
       const res = buildRes();
@@ -96,7 +95,10 @@ describe('requireCreatorProfileOwnership', () => {
          status: 'wallet_not_found',
          address: VALID_STELLAR_ADDRESS,
       });
-      const req = buildReq({ address: VALID_STELLAR_ADDRESS, creatorId: 'alice' });
+      const req = buildReq({
+         address: VALID_STELLAR_ADDRESS,
+         creatorId: 'alice',
+      });
       const res = buildRes();
       const next = jest.fn();
 
@@ -113,7 +115,10 @@ describe('requireCreatorProfileOwnership', () => {
          address: VALID_STELLAR_ADDRESS,
          ownerUserId: 'someone-else',
       });
-      const req = buildReq({ address: VALID_STELLAR_ADDRESS, creatorId: 'alice' });
+      const req = buildReq({
+         address: VALID_STELLAR_ADDRESS,
+         creatorId: 'alice',
+      });
       const res = buildRes();
       const next = jest.fn();
 
@@ -128,7 +133,10 @@ describe('requireCreatorProfileOwnership', () => {
          status: 'granted',
          ownerUserId: 'user-1',
       });
-      const req = buildReq({ address: VALID_STELLAR_ADDRESS, creatorId: 'alice' });
+      const req = buildReq({
+         address: VALID_STELLAR_ADDRESS,
+         creatorId: 'alice',
+      });
       const res = buildRes();
       const next = jest.fn();
 
@@ -150,7 +158,10 @@ describe('requireCreatorProfileOwnership', () => {
          ownerUserId: 'user-1',
       });
       const req = buildReq({
-         address: [VALID_STELLAR_ADDRESS, 'GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB'],
+         address: [
+            VALID_STELLAR_ADDRESS,
+            'GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
+         ],
          creatorId: 'alice',
       });
       const res = buildRes();
@@ -179,7 +190,10 @@ describe('requireCreatorProfileOwnership', () => {
 
    it('returns 500 when the helper throws with a valid address', async () => {
       mockedCheck.mockRejectedValue(new Error('db down'));
-      const req = buildReq({ address: VALID_STELLAR_ADDRESS, creatorId: 'alice' });
+      const req = buildReq({
+         address: VALID_STELLAR_ADDRESS,
+         creatorId: 'alice',
+      });
       const res = buildRes();
       const next = jest.fn();
       const errorSpy = jest

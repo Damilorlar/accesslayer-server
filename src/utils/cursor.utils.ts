@@ -34,7 +34,7 @@ export function encodeCursor<T>(payload: T): string {
    const payloadStr = JSON.stringify(payload);
    const base64Payload = Buffer.from(payloadStr).toString('base64url');
    const checksum = generateCursorChecksum(base64Payload);
-   
+
    return `${base64Payload}.${checksum}`;
 }
 
@@ -52,34 +52,38 @@ export function decodeCursor<T>(cursor: string): T {
 
    const parts = cursor.split('.');
    if (parts.length > 2) {
-      throw new CursorChecksumError('Invalid cursor format. Expected base64payload.checksum');
+      throw new CursorChecksumError(
+         'Invalid cursor format. Expected base64payload.checksum'
+      );
    }
 
    const [base64Payload, providedChecksum] = parts;
-   
+
    if (!base64Payload) {
       throw new CursorChecksumError('Cursor payload cannot be empty');
    }
-   
+
    // Backward compatibility: allow parsing without checksum if no dot was present
    if (providedChecksum !== undefined) {
       if (!providedChecksum) {
-         throw new CursorChecksumError('Cursor checksum cannot be empty if signature separator is present');
+         throw new CursorChecksumError(
+            'Cursor checksum cannot be empty if signature separator is present'
+         );
       }
 
       const expectedChecksum = generateCursorChecksum(base64Payload);
-      
+
       // Use timing-safe equal to prevent timing attacks comparing checksums
       let expectedBuffer: Buffer;
       let providedBuffer: Buffer;
-      
+
       try {
          expectedBuffer = Buffer.from(expectedChecksum, 'hex');
          providedBuffer = Buffer.from(providedChecksum, 'hex');
       } catch {
          throw new CursorChecksumError('Invalid checksum format');
       }
-      
+
       if (
          expectedBuffer.length !== providedBuffer.length ||
          !crypto.timingSafeEqual(expectedBuffer, providedBuffer)
@@ -94,7 +98,7 @@ export function decodeCursor<T>(cursor: string): T {
    } catch {
       throw new CursorChecksumError('Failed to decode base64 payload');
    }
-   
+
    try {
       return JSON.parse(payloadStr) as T;
    } catch {

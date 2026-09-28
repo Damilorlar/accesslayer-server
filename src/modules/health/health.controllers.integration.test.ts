@@ -2,25 +2,25 @@
 // All external dependencies (Prisma, config) are mocked so no real DB is needed.
 
 jest.mock('../../config', () => ({
-    envConfig: {
-        MODE: 'production',
-        PORT: 3000,
-        INDEXER_HEARTBEAT_STALE_THRESHOLD_MS: 300000,
-        DB_QUERY_TIMEOUT_MS: 5000,
-    },
-    appConfig: {
-        allowedOrigins: [],
-    },
+   envConfig: {
+      MODE: 'production',
+      PORT: 3000,
+      INDEXER_HEARTBEAT_STALE_THRESHOLD_MS: 300000,
+      DB_QUERY_TIMEOUT_MS: 5000,
+   },
+   appConfig: {
+      allowedOrigins: [],
+   },
 }));
 
 jest.mock('../../utils/prisma.utils', () => ({
-    prisma: {
-        $queryRaw: jest.fn(),
-    },
+   prisma: {
+      $queryRaw: jest.fn(),
+   },
 }));
 
 jest.mock('../../utils/indexer-cursor-staleness.utils', () => ({
-    checkIndexerCursorStalenessFromStore: jest.fn().mockResolvedValue(undefined),
+   checkIndexerCursorStalenessFromStore: jest.fn().mockResolvedValue(undefined),
 }));
 
 import { Request, Response } from 'express';
@@ -34,21 +34,21 @@ const queryRawMock = prisma.$queryRaw as unknown as jest.Mock;
 // ---------------------------------------------------------------------------
 
 function mockResponse(): Response & { statusCode: number; body: any } {
-    const res = { statusCode: 0, body: undefined as any } as any;
-    res.status = (code: number) => {
-        res.statusCode = code;
-        return res;
-    };
-    res.json = (payload: any) => {
-        res.body = payload;
-        return res;
-    };
-    res.setHeader = () => res;
-    return res;
+   const res = { statusCode: 0, body: undefined as any } as any;
+   res.status = (code: number) => {
+      res.statusCode = code;
+      return res;
+   };
+   res.json = (payload: any) => {
+      res.body = payload;
+      return res;
+   };
+   res.setHeader = () => res;
+   return res;
 }
 
 function mockRequest(): Request {
-    return {} as Request;
+   return {} as Request;
 }
 
 // ---------------------------------------------------------------------------
@@ -56,73 +56,73 @@ function mockRequest(): Request {
 // ---------------------------------------------------------------------------
 
 describe('readinessCheck() — simulated database failure', () => {
-    beforeEach(() => {
-        queryRawMock.mockReset();
-    });
+   beforeEach(() => {
+      queryRawMock.mockReset();
+   });
 
-    it('returns 503 when the database is unreachable', async () => {
-        queryRawMock.mockRejectedValue(new Error('connection refused'));
+   it('returns 503 when the database is unreachable', async () => {
+      queryRawMock.mockRejectedValue(new Error('connection refused'));
 
-        const res = mockResponse();
-        await readinessCheck(mockRequest(), res);
+      const res = mockResponse();
+      await readinessCheck(mockRequest(), res);
 
-        expect(res.statusCode).toBe(503);
-    });
+      expect(res.statusCode).toBe(503);
+   });
 
-    it('sets ready:false when a dependency check fails', async () => {
-        queryRawMock.mockRejectedValue(new Error('timeout'));
+   it('sets ready:false when a dependency check fails', async () => {
+      queryRawMock.mockRejectedValue(new Error('timeout'));
 
-        const res = mockResponse();
-        await readinessCheck(mockRequest(), res);
+      const res = mockResponse();
+      await readinessCheck(mockRequest(), res);
 
-        expect(res.body.ready).toBe(false);
-    });
+      expect(res.body.ready).toBe(false);
+   });
 
-    it('response body conforms to the readiness schema even on failure', async () => {
-        queryRawMock.mockRejectedValue(new Error('ECONNREFUSED'));
+   it('response body conforms to the readiness schema even on failure', async () => {
+      queryRawMock.mockRejectedValue(new Error('ECONNREFUSED'));
 
-        const res = mockResponse();
-        await readinessCheck(mockRequest(), res);
+      const res = mockResponse();
+      await readinessCheck(mockRequest(), res);
 
-        expect(res.body).toHaveProperty('ready', false);
-        expect(res.body).toHaveProperty('timestamp');
-        expect(typeof res.body.timestamp).toBe('string');
-        expect(res.body).toHaveProperty('latencyMs');
-        expect(typeof res.body.latencyMs).toBe('number');
-        expect(Array.isArray(res.body.checks)).toBe(true);
-    });
+      expect(res.body).toHaveProperty('ready', false);
+      expect(res.body).toHaveProperty('timestamp');
+      expect(typeof res.body.timestamp).toBe('string');
+      expect(res.body).toHaveProperty('latencyMs');
+      expect(typeof res.body.latencyMs).toBe('number');
+      expect(Array.isArray(res.body.checks)).toBe(true);
+   });
 
-    it('reports the database check as failed in the checks array', async () => {
-        queryRawMock.mockRejectedValue(new Error('connection refused'));
+   it('reports the database check as failed in the checks array', async () => {
+      queryRawMock.mockRejectedValue(new Error('connection refused'));
 
-        const res = mockResponse();
-        await readinessCheck(mockRequest(), res);
+      const res = mockResponse();
+      await readinessCheck(mockRequest(), res);
 
-        const dbCheck = res.body.checks.find((c: any) => c.name === 'database');
-        expect(dbCheck).toBeDefined();
-        expect(dbCheck.status).toBe('fail');
-        expect(typeof dbCheck.error).toBe('string');
-    });
+      const dbCheck = res.body.checks.find((c: any) => c.name === 'database');
+      expect(dbCheck).toBeDefined();
+      expect(dbCheck.status).toBe('fail');
+      expect(typeof dbCheck.error).toBe('string');
+   });
 
-    it('still passes the cache check when only the database fails', async () => {
-        queryRawMock.mockRejectedValue(new Error('db down'));
+   it('still passes the cache check when only the database fails', async () => {
+      queryRawMock.mockRejectedValue(new Error('db down'));
 
-        const res = mockResponse();
-        await readinessCheck(mockRequest(), res);
+      const res = mockResponse();
+      await readinessCheck(mockRequest(), res);
 
-        const cacheCheck = res.body.checks.find((c: any) => c.name === 'cache');
-        expect(cacheCheck).toBeDefined();
-        expect(cacheCheck.status).toBe('ok');
-    });
+      const cacheCheck = res.body.checks.find((c: any) => c.name === 'cache');
+      expect(cacheCheck).toBeDefined();
+      expect(cacheCheck.status).toBe('ok');
+   });
 
-    it('includes a non-zero latencyMs even when the database check fails', async () => {
-        queryRawMock.mockRejectedValue(new Error('db down'));
+   it('includes a non-zero latencyMs even when the database check fails', async () => {
+      queryRawMock.mockRejectedValue(new Error('db down'));
 
-        const res = mockResponse();
-        await readinessCheck(mockRequest(), res);
+      const res = mockResponse();
+      await readinessCheck(mockRequest(), res);
 
-        expect(res.body.latencyMs).toBeGreaterThanOrEqual(0);
-    });
+      expect(res.body.latencyMs).toBeGreaterThanOrEqual(0);
+   });
 });
 
 // ---------------------------------------------------------------------------
@@ -130,55 +130,57 @@ describe('readinessCheck() — simulated database failure', () => {
 // ---------------------------------------------------------------------------
 
 describe('healthCheck() — simulated database failure in production mode', () => {
-    beforeEach(() => {
-        queryRawMock.mockReset();
-    });
+   beforeEach(() => {
+      queryRawMock.mockReset();
+   });
 
-    it('returns 503 when the database is disconnected in production', async () => {
-        queryRawMock.mockRejectedValue(new Error('connection refused'));
+   it('returns 503 when the database is disconnected in production', async () => {
+      queryRawMock.mockRejectedValue(new Error('connection refused'));
 
-        const res = mockResponse();
-        await healthCheck(mockRequest(), res);
+      const res = mockResponse();
+      await healthCheck(mockRequest(), res);
 
-        expect(res.statusCode).toBe(503);
-    });
+      expect(res.statusCode).toBe(503);
+   });
 
-    it('response body conforms to the health schema even when DB is down', async () => {
-        queryRawMock.mockRejectedValue(new Error('ECONNREFUSED'));
+   it('response body conforms to the health schema even when DB is down', async () => {
+      queryRawMock.mockRejectedValue(new Error('ECONNREFUSED'));
 
-        const res = mockResponse();
-        await healthCheck(mockRequest(), res);
+      const res = mockResponse();
+      await healthCheck(mockRequest(), res);
 
-        expect(res.body).toHaveProperty('success');
-        expect(res.body).toHaveProperty('message');
-        expect(res.body).toHaveProperty('timestamp');
-        expect(res.body).toHaveProperty('database');
-        expect(res.body.database.status).toBe('disconnected');
-    });
+      expect(res.body).toHaveProperty('success');
+      expect(res.body).toHaveProperty('message');
+      expect(res.body).toHaveProperty('timestamp');
+      expect(res.body).toHaveProperty('database');
+      expect(res.body.database.status).toBe('disconnected');
+   });
 
-    it('marks the Database service as unhealthy in the services array', async () => {
-        queryRawMock.mockRejectedValue(new Error('db down'));
+   it('marks the Database service as unhealthy in the services array', async () => {
+      queryRawMock.mockRejectedValue(new Error('db down'));
 
-        const res = mockResponse();
-        await healthCheck(mockRequest(), res);
+      const res = mockResponse();
+      await healthCheck(mockRequest(), res);
 
-        const dbService = res.body.services?.find((s: any) => s.name === 'Database');
-        expect(dbService).toBeDefined();
-        expect(dbService.status).toBe('unhealthy');
-    });
+      const dbService = res.body.services?.find(
+         (s: any) => s.name === 'Database'
+      );
+      expect(dbService).toBeDefined();
+      expect(dbService.status).toBe('unhealthy');
+   });
 
-    it('includes public-safe timeout metadata in detailed health output', async () => {
-        queryRawMock.mockResolvedValue([{ '?column?': 1 }]);
+   it('includes public-safe timeout metadata in detailed health output', async () => {
+      queryRawMock.mockResolvedValue([{ '?column?': 1 }]);
 
-        const res = mockResponse();
-        await healthCheck(mockRequest(), res);
+      const res = mockResponse();
+      await healthCheck(mockRequest(), res);
 
-        expect(res.body).toHaveProperty('timeouts');
-        expect(res.body.timeouts).toEqual({
-            database_timeout_ms: 5000,
-            cache_timeout_ms: 300000,
-        });
-        expect(typeof res.body.timeouts.database_timeout_ms).toBe('number');
-        expect(typeof res.body.timeouts.cache_timeout_ms).toBe('number');
-    });
+      expect(res.body).toHaveProperty('timeouts');
+      expect(res.body.timeouts).toEqual({
+         database_timeout_ms: 5000,
+         cache_timeout_ms: 300000,
+      });
+      expect(typeof res.body.timeouts.database_timeout_ms).toBe('number');
+      expect(typeof res.body.timeouts.cache_timeout_ms).toBe('number');
+   });
 });

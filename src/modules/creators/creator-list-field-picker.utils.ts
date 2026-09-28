@@ -12,12 +12,15 @@ export const CREATOR_LIST_PUBLIC_FIELDS = [
    'priceChange24h',
 ] as const;
 
-export type CreatorListPublicField = (typeof CREATOR_LIST_PUBLIC_FIELDS)[number];
+export type CreatorListPublicField =
+   (typeof CREATOR_LIST_PUBLIC_FIELDS)[number];
 
 /**
  * Returns true if `field` is a recognised creator list public field.
  */
-export function isCreatorListPublicField(field: string): field is CreatorListPublicField {
+export function isCreatorListPublicField(
+   field: string
+): field is CreatorListPublicField {
    return (CREATOR_LIST_PUBLIC_FIELDS as readonly string[]).includes(field);
 }
 
@@ -38,7 +41,7 @@ export function isCreatorListPublicField(field: string): field is CreatorListPub
  */
 export function pickCreatorListFields(
    item: CreatorListItem,
-   fields: readonly CreatorListPublicField[] = CREATOR_LIST_PUBLIC_FIELDS,
+   fields: readonly CreatorListPublicField[] = CREATOR_LIST_PUBLIC_FIELDS
 ): Pick<CreatorListItem, CreatorListPublicField> {
    const result = {} as Pick<CreatorListItem, CreatorListPublicField>;
    for (const field of fields) {

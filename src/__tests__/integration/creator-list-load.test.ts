@@ -6,18 +6,20 @@ const CREATOR_FIXTURE_SIZE = 500;
 const RESPONSE_TIME_BUDGET_MS = 2000;
 
 describe('Creator List Load Test', () => {
-   // NOTE: This test should be run in isolation using --runInBand to avoid interference 
+   // NOTE: This test should be run in isolation using --runInBand to avoid interference
    // from other tests that might be hitting the database simultaneously.
 
    beforeAll(async () => {
       // 1. Seed Users
-      const usersToCreate = Array.from({ length: CREATOR_FIXTURE_SIZE }).map((_, i) => ({
-         id: `load-test-user-${i}`,
-         email: `load-test-user-${i}@example.com`,
-         passwordHash: 'dummy-hash',
-         firstName: 'Load',
-         lastName: `TestUser ${i}`,
-      }));
+      const usersToCreate = Array.from({ length: CREATOR_FIXTURE_SIZE }).map(
+         (_, i) => ({
+            id: `load-test-user-${i}`,
+            email: `load-test-user-${i}@example.com`,
+            passwordHash: 'dummy-hash',
+            firstName: 'Load',
+            lastName: `TestUser ${i}`,
+         })
+      );
 
       await prisma.user.createMany({
          data: usersToCreate,
@@ -25,11 +27,13 @@ describe('Creator List Load Test', () => {
       });
 
       // 2. Seed CreatorProfiles
-      const creatorsToCreate = Array.from({ length: CREATOR_FIXTURE_SIZE }).map((_, i) => ({
-         userId: `load-test-user-${i}`,
-         handle: `load-test-creator-${i}`,
-         displayName: `Load Test Creator ${i}`,
-      }));
+      const creatorsToCreate = Array.from({ length: CREATOR_FIXTURE_SIZE }).map(
+         (_, i) => ({
+            userId: `load-test-user-${i}`,
+            handle: `load-test-creator-${i}`,
+            displayName: `Load Test Creator ${i}`,
+         })
+      );
 
       await prisma.creatorProfile.createMany({
          data: creatorsToCreate,

@@ -52,8 +52,8 @@ export function mapUnknownRouteError(
       typeof fromErr?.statusCode === 'number'
          ? fromErr.statusCode
          : typeof fromErr?.status === 'number'
-            ? fromErr.status
-            : 500;
+           ? fromErr.status
+           : 500;
 
    const message = includeDebug
       ? fromErr?.message || 'Something went wrong'

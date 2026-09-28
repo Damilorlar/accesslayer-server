@@ -32,9 +32,9 @@ describe('getRawCreatorListSortParam()', () => {
    });
 
    it('reads the first value when sort is an array', () => {
-      expect(getRawCreatorListSortParam({ sort: ['followers', 'createdAt'] })).toBe(
-         'followers'
-      );
+      expect(
+         getRawCreatorListSortParam({ sort: ['followers', 'createdAt'] })
+      ).toBe('followers');
    });
 });
 

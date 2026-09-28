@@ -15,28 +15,34 @@ import { decodeCursor, CursorChecksumError } from './cursor.utils';
  * @example
  * logger.debug({ cursor: formatCursorForDebug(raw), msg: 'Processing cursor' });
  */
-export function formatCursorForDebug(raw: unknown): Record<string, string> | null {
-    if (typeof raw !== 'string' || raw === '') {
-        return null;
-    }
+export function formatCursorForDebug(
+   raw: unknown
+): Record<string, string> | null {
+   if (typeof raw !== 'string' || raw === '') {
+      return null;
+   }
 
-    try {
-        const payload = decodeCursor<Record<string, unknown>>(raw);
+   try {
+      const payload = decodeCursor<Record<string, unknown>>(raw);
 
-        if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
-            return null;
-        }
+      if (
+         payload === null ||
+         typeof payload !== 'object' ||
+         Array.isArray(payload)
+      ) {
+         return null;
+      }
 
-        return Object.fromEntries(
-            Object.entries(payload).map(([key, value]) => [
-                key,
-                value === null || value === undefined ? '' : String(value),
-            ]),
-        );
-    } catch (err) {
-        if (err instanceof CursorChecksumError) {
-            return null;
-        }
-        return null;
-    }
+      return Object.fromEntries(
+         Object.entries(payload).map(([key, value]) => [
+            key,
+            value === null || value === undefined ? '' : String(value),
+         ])
+      );
+   } catch (err) {
+      if (err instanceof CursorChecksumError) {
+         return null;
+      }
+      return null;
+   }
 }

@@ -22,8 +22,8 @@ Serialize your request body to JSON (no extra whitespace, consistent ordering):
 
 ```javascript
 const body = {
-  displayName: "Alice Creator",
-  bio: "Building the future on Stellar"
+   displayName: 'Alice Creator',
+   bio: 'Building the future on Stellar',
 };
 const bodyJson = JSON.stringify(body);
 ```
@@ -64,16 +64,19 @@ const signatureBase64 = signature.toString('base64');
 ### 5. Send the Request
 
 ```javascript
-const response = await fetch('https://api.accesslayer.org/api/v1/creators/:creatorId/profile', {
-  method: 'PUT',
-  headers: {
-    'Content-Type': 'application/json',
-    'x-wallet-address': keypair.publicKey(),
-    'x-wallet-signature': signatureBase64,
-    'x-timestamp': timestamp,
-  },
-  body: bodyJson,
-});
+const response = await fetch(
+   'https://api.accesslayer.org/api/v1/creators/:creatorId/profile',
+   {
+      method: 'PUT',
+      headers: {
+         'Content-Type': 'application/json',
+         'x-wallet-address': keypair.publicKey(),
+         'x-wallet-signature': signatureBase64,
+         'x-timestamp': timestamp,
+      },
+      body: bodyJson,
+   }
+);
 ```
 
 ## Complete Example
@@ -84,41 +87,41 @@ const crypto = require('crypto');
 const fetch = require('node-fetch');
 
 async function signedRequest(creatorId, body, secretKey) {
-  const keypair = Keypair.fromSecret(secretKey);
-  const timestamp = Date.now().toString();
-  const bodyJson = JSON.stringify(body);
-  
-  // Build canonical message
-  const payload = bodyJson + timestamp;
-  const message = crypto.createHash('sha256').update(payload, 'utf8').digest();
-  
-  // Sign
-  const signature = keypair.sign(message);
-  const signatureBase64 = signature.toString('base64');
-  
-  // Send
-  const response = await fetch(
-    `https://api.accesslayer.org/api/v1/creators/${creatorId}/profile`,
-    {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-wallet-address': keypair.publicKey(),
-        'x-wallet-signature': signatureBase64,
-        'x-timestamp': timestamp,
-      },
-      body: bodyJson,
-    }
-  );
-  
-  return response.json();
+   const keypair = Keypair.fromSecret(secretKey);
+   const timestamp = Date.now().toString();
+   const bodyJson = JSON.stringify(body);
+
+   // Build canonical message
+   const payload = bodyJson + timestamp;
+   const message = crypto.createHash('sha256').update(payload, 'utf8').digest();
+
+   // Sign
+   const signature = keypair.sign(message);
+   const signatureBase64 = signature.toString('base64');
+
+   // Send
+   const response = await fetch(
+      `https://api.accesslayer.org/api/v1/creators/${creatorId}/profile`,
+      {
+         method: 'PUT',
+         headers: {
+            'Content-Type': 'application/json',
+            'x-wallet-address': keypair.publicKey(),
+            'x-wallet-signature': signatureBase64,
+            'x-timestamp': timestamp,
+         },
+         body: bodyJson,
+      }
+   );
+
+   return response.json();
 }
 
 // Usage
 const result = await signedRequest(
-  'clxxx123',
-  { displayName: 'Alice', bio: 'Creator on Stellar' },
-  'SXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+   'clxxx123',
+   { displayName: 'Alice', bio: 'Creator on Stellar' },
+   'SXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
 );
 ```
 
@@ -128,11 +131,11 @@ const result = await signedRequest(
 
 ```json
 {
-  "success": false,
-  "error": {
-    "code": "UNAUTHORIZED",
-    "message": "Missing required signature headers: x-wallet-address, x-wallet-signature, x-timestamp"
-  }
+   "success": false,
+   "error": {
+      "code": "UNAUTHORIZED",
+      "message": "Missing required signature headers: x-wallet-address, x-wallet-signature, x-timestamp"
+   }
 }
 ```
 
@@ -140,11 +143,11 @@ const result = await signedRequest(
 
 ```json
 {
-  "success": false,
-  "error": {
-    "code": "UNAUTHORIZED",
-    "message": "Signature timestamp is invalid or expired (must be within 5 minutes)"
-  }
+   "success": false,
+   "error": {
+      "code": "UNAUTHORIZED",
+      "message": "Signature timestamp is invalid or expired (must be within 5 minutes)"
+   }
 }
 ```
 
@@ -152,11 +155,11 @@ const result = await signedRequest(
 
 ```json
 {
-  "success": false,
-  "error": {
-    "code": "FORBIDDEN",
-    "message": "Invalid signature — the request body was tampered with or signed by the wrong key"
-  }
+   "success": false,
+   "error": {
+      "code": "FORBIDDEN",
+      "message": "Invalid signature — the request body was tampered with or signed by the wrong key"
+   }
 }
 ```
 
@@ -164,11 +167,11 @@ const result = await signedRequest(
 
 ```json
 {
-  "success": false,
-  "error": {
-    "code": "BAD_REQUEST",
-    "message": "Invalid Stellar wallet address format"
-  }
+   "success": false,
+   "error": {
+      "code": "BAD_REQUEST",
+      "message": "Invalid Stellar wallet address format"
+   }
 }
 ```
 
@@ -184,7 +187,7 @@ const result = await signedRequest(
 The following routes require Stellar signature verification:
 
 - `PUT /api/v1/creators/:creatorId/profile` — Update creator profile
-- *(Future routes will be added here as they are protected)*
+- _(Future routes will be added here as they are protected)_
 
 ## Testing
 

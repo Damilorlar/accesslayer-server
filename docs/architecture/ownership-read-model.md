@@ -6,14 +6,14 @@ The ownership read model is the authoritative source of truth for wallet-level k
 
 The ownership read model is stored in the `KeyOwnership` table.
 
-| Field          | Type       | Description                                                                 |
-|----------------|------------|-----------------------------------------------------------------------------|
-| `id`           | `String`   | Unique record identifier (cuid).                                            |
-| `ownerAddress` | `String`   | Stellar wallet address of the key holder.                                   |
-| `creatorId`    | `String`   | ID of the creator whose keys are held.                                      |
-| `balance`      | `Decimal`  | Number of keys currently held. Defaults to `0`. Never goes below `0`.      |
-| `createdAt`    | `DateTime` | Timestamp when this ownership record was first created.                     |
-| `updatedAt`    | `DateTime` | Timestamp of the most recent balance update (auto-managed by Prisma).       |
+| Field          | Type       | Description                                                           |
+| -------------- | ---------- | --------------------------------------------------------------------- |
+| `id`           | `String`   | Unique record identifier (cuid).                                      |
+| `ownerAddress` | `String`   | Stellar wallet address of the key holder.                             |
+| `creatorId`    | `String`   | ID of the creator whose keys are held.                                |
+| `balance`      | `Decimal`  | Number of keys currently held. Defaults to `0`. Never goes below `0`. |
+| `createdAt`    | `DateTime` | Timestamp when this ownership record was first created.               |
+| `updatedAt`    | `DateTime` | Timestamp of the most recent balance update (auto-managed by Prisma). |
 
 **Uniqueness constraint:** `(ownerAddress, creatorId)` — one record per wallet per creator.
 

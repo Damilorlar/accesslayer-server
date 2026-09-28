@@ -5,19 +5,22 @@
  * monitor malformed or malicious query patterns without external dependencies.
  */
 
-export type FilterParseErrorCategory = 'unknown_key' | 'invalid_value' | 'schema_error';
+export type FilterParseErrorCategory =
+   | 'unknown_key'
+   | 'invalid_value'
+   | 'schema_error';
 
 export interface FilterParseErrorEntry {
-  route: string;
-  category: FilterParseErrorCategory;
-  count: number;
-  lastOccurred: string;
+   route: string;
+   category: FilterParseErrorCategory;
+   count: number;
+   lastOccurred: string;
 }
 
 const counters = new Map<string, FilterParseErrorEntry>();
 
 function key(route: string, category: FilterParseErrorCategory): string {
-  return `${route}:${category}`;
+   return `${route}:${category}`;
 }
 
 /**
@@ -27,22 +30,22 @@ function key(route: string, category: FilterParseErrorCategory): string {
  * @param category - The type of parse error
  */
 export function incrementFilterParseError(
-  route: string,
-  category: FilterParseErrorCategory
+   route: string,
+   category: FilterParseErrorCategory
 ): void {
-  const k = key(route, category);
-  const existing = counters.get(k);
-  if (existing) {
-    existing.count += 1;
-    existing.lastOccurred = new Date().toISOString();
-  } else {
-    counters.set(k, {
-      route,
-      category,
-      count: 1,
-      lastOccurred: new Date().toISOString(),
-    });
-  }
+   const k = key(route, category);
+   const existing = counters.get(k);
+   if (existing) {
+      existing.count += 1;
+      existing.lastOccurred = new Date().toISOString();
+   } else {
+      counters.set(k, {
+         route,
+         category,
+         count: 1,
+         lastOccurred: new Date().toISOString(),
+      });
+   }
 }
 
 /**
@@ -51,7 +54,7 @@ export function incrementFilterParseError(
  * @returns Array of error entries with route, category, count, and last occurrence
  */
 export function getFilterParseErrors(): FilterParseErrorEntry[] {
-  return Array.from(counters.values());
+   return Array.from(counters.values());
 }
 
 /**
@@ -59,5 +62,5 @@ export function getFilterParseErrors(): FilterParseErrorEntry[] {
  * Primarily for testing.
  */
 export function resetFilterParseMetrics(): void {
-  counters.clear();
+   counters.clear();
 }

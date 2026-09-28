@@ -20,5 +20,5 @@ import { ErrorCode } from '../../constants/error.constants';
  * }
  */
 export function sendCreatorNotFound(res: Response): void {
-  sendError(res, 404, ErrorCode.NOT_FOUND, 'Creator not found');
+   sendError(res, 404, ErrorCode.NOT_FOUND, 'Creator not found');
 }

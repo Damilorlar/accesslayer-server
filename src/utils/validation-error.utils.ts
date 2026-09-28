@@ -8,23 +8,23 @@
  * res.status(422).json(buildValidationError('wallet_address', 'Invalid Stellar address', 'INVALID_ADDRESS'));
  */
 export interface ValidationErrorResponse {
-    error: {
-        code: string;
-        field: string;
-        message: string;
-    };
+   error: {
+      code: string;
+      field: string;
+      message: string;
+   };
 }
 
 export function buildValidationError(
-    field: string,
-    message: string,
-    code: string
+   field: string,
+   message: string,
+   code: string
 ): ValidationErrorResponse {
-    return {
-        error: {
-            code,
-            field,
-            message,
-        },
-    };
+   return {
+      error: {
+         code,
+         field,
+         message,
+      },
+   };
 }

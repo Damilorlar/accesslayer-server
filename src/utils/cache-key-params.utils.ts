@@ -15,11 +15,30 @@
  * // => "limit:20:order:desc:sort:createdAt"
  */
 export function buildCanonicalParamString(
-    params: Record<string, string | number | boolean | undefined>,
+   params: Record<string, unknown>
 ): string {
-    return Object.entries(params)
-        .filter((entry): entry is [string, string | number | boolean] => entry[1] !== undefined)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([key, value]) => `${key}:${value}`)
-        .join(':');
+   return Object.entries(params)
+      .filter((entry): entry is [string, unknown] => entry[1] !== undefined)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, value]) => `${key}:${typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value)}`)
+      .join(':');
 }
+
+import { createHash } from 'crypto';
+
+/**
+ * Generates a stable, fixed-length cache key from a base string and query parameter set.
+ *
+ * Param keys are sorted lexicographically before hashing, ensuring that parameter order
+ * does not affect the generated key.
+ *
+ * @param base - The base prefix string (e.g. creator ID or endpoint prefix)
+ * @param params - Object containing query parameter key-value pairs
+ * @returns A fixed-length string cache key
+ */
+export function buildCacheKey(base: string, params: Record<string, unknown>): string {
+    const canonical = buildCanonicalParamString(params);
+    const hash = createHash('sha256').update(canonical).digest('hex').slice(0, 16);
+    return `${base}:${hash}`;
+}
+

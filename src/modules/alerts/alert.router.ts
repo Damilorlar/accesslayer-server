@@ -1,5 +1,9 @@
 import { Router } from 'express';
-import { httpCreateAlert, httpListAlerts, httpDeleteAlert } from './alert.controllers';
+import {
+   httpCreateAlert,
+   httpListAlerts,
+   httpDeleteAlert,
+} from './alert.controllers';
 
 const alertsRouter = Router();
 

@@ -13,7 +13,10 @@ export function checkOwnershipReadModelConsistency({
    detectedAt,
    logError,
 }: OwnershipConsistencyCheckParams): boolean {
-   const computedHolderSum = holderBalances.reduce((sum, balance) => sum + balance, 0);
+   const computedHolderSum = holderBalances.reduce(
+      (sum, balance) => sum + balance,
+      0
+   );
    const discrepancy = computedHolderSum - storedSupply;
 
    if (discrepancy === 0) {

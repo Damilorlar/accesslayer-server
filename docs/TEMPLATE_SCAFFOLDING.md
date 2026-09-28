@@ -10,27 +10,27 @@ They are **not product logic**. They are development accelerators that should be
 
 ## Reusable template files
 
-| File | Purpose | Adapt or keep as-is? |
-|------|---------|----------------------|
-| `src/template/render-starter-email.ts` | Generic HTML email wrapper for transactional emails | Adapt when Access Layer needs branded email layouts |
-| `src/utils/mail.utils.ts` | Gmail-based email transport with starter templates | Keep structure, update templates as product flows are added |
-| `src/config.ts` | Zod-validated environment config with common variables | Extend with new env vars as needed |
-| `src/middlewares/error.middleware.ts` | Global error handler covering Zod, Prisma, JWT, and syntax errors | Keep as-is, extend for new error types |
-| `src/middlewares/rate.middleware.ts` | Rate limiting with dev/prod defaults | Keep as-is, tune limits for production |
-| `src/middlewares/cors.middleware.ts` | CORS setup using allowed origins from config | Keep as-is |
-| `src/utils/prisma.utils.ts` | Prisma singleton with dev-friendly logging | Keep as-is |
-| `src/utils/logger.utils.ts` | Pino logger and HTTP status constants | Keep as-is |
-| `src/tspec.config.ts` | OpenAPI doc generation config | Keep, update title and description as API grows |
-| `src/types/profile.types.ts` | Domain types and a `STARTER_ACCOUNT_SCHEMA` reference string | Adapt types as data model evolves; schema string is a reference, not a migration |
+| File                                   | Purpose                                                           | Adapt or keep as-is?                                                             |
+| -------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `src/template/render-starter-email.ts` | Generic HTML email wrapper for transactional emails               | Adapt when Access Layer needs branded email layouts                              |
+| `src/utils/mail.utils.ts`              | Gmail-based email transport with starter templates                | Keep structure, update templates as product flows are added                      |
+| `src/config.ts`                        | Zod-validated environment config with common variables            | Extend with new env vars as needed                                               |
+| `src/middlewares/error.middleware.ts`  | Global error handler covering Zod, Prisma, JWT, and syntax errors | Keep as-is, extend for new error types                                           |
+| `src/middlewares/rate.middleware.ts`   | Rate limiting with dev/prod defaults                              | Keep as-is, tune limits for production                                           |
+| `src/middlewares/cors.middleware.ts`   | CORS setup using allowed origins from config                      | Keep as-is                                                                       |
+| `src/utils/prisma.utils.ts`            | Prisma singleton with dev-friendly logging                        | Keep as-is                                                                       |
+| `src/utils/logger.utils.ts`            | Pino logger and HTTP status constants                             | Keep as-is                                                                       |
+| `src/tspec.config.ts`                  | OpenAPI doc generation config                                     | Keep, update title and description as API grows                                  |
+| `src/types/profile.types.ts`           | Domain types and a `STARTER_ACCOUNT_SCHEMA` reference string      | Adapt types as data model evolves; schema string is a reference, not a migration |
 
 ## Local-only and example files
 
-| File | Purpose | Notes |
-|------|---------|-------|
-| `.env.example` | Safe placeholder environment variables | Copy to `.env` locally. Never commit a real `.env` file |
-| `docker-compose.yml` | Local PostgreSQL container | Local development only. Not used in production or CI |
-| `nodemon.json` | Auto-reload config for `pnpm dev` | Local development convenience |
-| `.husky/` | Git hooks for lint-staged | Runs locally on commit, enforced by `prepare` script |
+| File                 | Purpose                                | Notes                                                   |
+| -------------------- | -------------------------------------- | ------------------------------------------------------- |
+| `.env.example`       | Safe placeholder environment variables | Copy to `.env` locally. Never commit a real `.env` file |
+| `docker-compose.yml` | Local PostgreSQL container             | Local development only. Not used in production or CI    |
+| `nodemon.json`       | Auto-reload config for `pnpm dev`      | Local development convenience                           |
+| `.husky/`            | Git hooks for lint-staged              | Runs locally on commit, enforced by `prepare` script    |
 
 ## Files that are not scaffolding
 

@@ -5,8 +5,7 @@ import {
    CREATOR_ETAG_HEADER,
 } from './creator-etag.utils';
 
-const mockRes = () =>
-   ({ set: jest.fn() }) as unknown as Response;
+const mockRes = () => ({ set: jest.fn() }) as unknown as Response;
 
 describe('computeCreatorETag()', () => {
    it('returns a double-quoted 64-char hex string', () => {
@@ -40,7 +39,7 @@ describe('attachCreatorETagHeader()', () => {
       attachCreatorETagHeader(res, { id: '1' });
       expect(res.set).toHaveBeenCalledWith(
          CREATOR_ETAG_HEADER,
-         expect.stringMatching(/^"[0-9a-f]{64}"$/),
+         expect.stringMatching(/^"[0-9a-f]{64}"$/)
       );
    });
 

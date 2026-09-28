@@ -5,17 +5,17 @@ import { CreatorFilterInput } from './creators.filter';
 import { normalizeCreatorListSearchTerm } from './creators.search-term.utils';
 
 export type CreatorFeedWhere = {
-  isVerified?: boolean;
-  OR?: Array<{
-    handle?: { contains: string; mode: 'insensitive' };
-    displayName?: { contains: string; mode: 'insensitive' };
-  }>;
-  priceSnapshot?: {
-    currentPrice?: {
-      gte?: bigint;
-      lte?: bigint;
-    };
-  };
+   isVerified?: boolean;
+   OR?: Array<{
+      handle?: { contains: string; mode: 'insensitive' };
+      displayName?: { contains: string; mode: 'insensitive' };
+   }>;
+   priceSnapshot?: {
+      currentPrice?: {
+         gte?: bigint;
+         lte?: bigint;
+      };
+   };
 };
 
 /**
@@ -39,35 +39,37 @@ export type CreatorFeedWhere = {
  * const where = buildCreatorFeedWhere({});
  * // => {}
  */
-export function buildCreatorFeedWhere(filters: CreatorFilterInput): CreatorFeedWhere {
-  const where: CreatorFeedWhere = {};
+export function buildCreatorFeedWhere(
+   filters: CreatorFilterInput
+): CreatorFeedWhere {
+   const where: CreatorFeedWhere = {};
 
-  if (filters.verified !== undefined) {
-    where.isVerified = filters.verified;
-  }
+   if (filters.verified !== undefined) {
+      where.isVerified = filters.verified;
+   }
 
-  const normalizedSearch = normalizeCreatorListSearchTerm(filters.search);
-  if (normalizedSearch) {
-    where.OR = [
-      { handle: { contains: normalizedSearch, mode: 'insensitive' } },
-      { displayName: { contains: normalizedSearch, mode: 'insensitive' } },
-    ];
-  }
+   const normalizedSearch = normalizeCreatorListSearchTerm(filters.search);
+   if (normalizedSearch) {
+      where.OR = [
+         { handle: { contains: normalizedSearch, mode: 'insensitive' } },
+         { displayName: { contains: normalizedSearch, mode: 'insensitive' } },
+      ];
+   }
 
-  // Price range filtering
-  if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
-    where.priceSnapshot = {
-      currentPrice: {},
-    };
+   // Price range filtering
+   if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
+      where.priceSnapshot = {
+         currentPrice: {},
+      };
 
-    if (filters.minPrice !== undefined) {
-      where.priceSnapshot.currentPrice!.gte = filters.minPrice;
-    }
+      if (filters.minPrice !== undefined) {
+         where.priceSnapshot.currentPrice!.gte = filters.minPrice;
+      }
 
-    if (filters.maxPrice !== undefined) {
-      where.priceSnapshot.currentPrice!.lte = filters.maxPrice;
-    }
-  }
+      if (filters.maxPrice !== undefined) {
+         where.priceSnapshot.currentPrice!.lte = filters.maxPrice;
+      }
+   }
 
-  return where;
+   return where;
 }

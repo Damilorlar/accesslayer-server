@@ -60,10 +60,9 @@ describe('cursor pagination round-trip', () => {
    });
 
    it('page one returns the first 3 items and hasMore=true', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         PAGE_ONE_FIXTURES,
-         ALL_FIXTURES.length,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([PAGE_ONE_FIXTURES, ALL_FIXTURES.length]);
 
       const req = makeReq({ limit: '3', offset: '0' });
       const res = makeRes();
@@ -97,10 +96,9 @@ describe('cursor pagination round-trip', () => {
    });
 
    it('page two items are non-overlapping with page one', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         PAGE_ONE_FIXTURES,
-         ALL_FIXTURES.length,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([PAGE_ONE_FIXTURES, ALL_FIXTURES.length]);
 
       const reqOne = makeReq({ limit: '3', offset: '0' });
       const resOne = makeRes();
@@ -112,10 +110,9 @@ describe('cursor pagination round-trip', () => {
 
       jest.restoreAllMocks();
 
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         PAGE_TWO_FIXTURES,
-         ALL_FIXTURES.length,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([PAGE_TWO_FIXTURES, ALL_FIXTURES.length]);
 
       const reqTwo = makeReq({ limit: '3', offset: '3' });
       const resTwo = makeRes();
@@ -125,16 +122,17 @@ describe('cursor pagination round-trip', () => {
          (i: any) => i.id
       );
 
-      const overlap = pageOneIds.filter((id: string) => pageTwoIds.includes(id));
+      const overlap = pageOneIds.filter((id: string) =>
+         pageTwoIds.includes(id)
+      );
 
       expect(overlap).toHaveLength(0);
    });
 
    it('page two contains the expected fixture IDs', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         PAGE_TWO_FIXTURES,
-         ALL_FIXTURES.length,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([PAGE_TWO_FIXTURES, ALL_FIXTURES.length]);
 
       const req = makeReq({ limit: '3', offset: '3' });
       const res = makeRes();
@@ -147,10 +145,9 @@ describe('cursor pagination round-trip', () => {
    });
 
    it('page two meta reflects offset=3 and hasMore=false', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         PAGE_TWO_FIXTURES,
-         ALL_FIXTURES.length,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([PAGE_TWO_FIXTURES, ALL_FIXTURES.length]);
 
       const req = makeReq({ limit: '3', offset: '3' });
       const res = makeRes();
@@ -165,7 +162,8 @@ describe('cursor pagination round-trip', () => {
    });
 
    it('returns next available creators when the item at the cursor position was deleted', async () => {
-      const deletedCursorCreator = PAGE_ONE_FIXTURES[PAGE_ONE_FIXTURES.length - 1];
+      const deletedCursorCreator =
+         PAGE_ONE_FIXTURES[PAGE_ONE_FIXTURES.length - 1];
 
       const encoded = encodeCursor<CreatorFeedCursorPayload>({
          createdAt: deletedCursorCreator.createdAt.toISOString(),
@@ -175,12 +173,13 @@ describe('cursor pagination round-trip', () => {
       const decoded = decodeCursor<CreatorFeedCursorPayload>(encoded);
 
       expect(decoded.id).toBe(deletedCursorCreator.id);
-      expect(decoded.createdAt).toBe(deletedCursorCreator.createdAt.toISOString());
+      expect(decoded.createdAt).toBe(
+         deletedCursorCreator.createdAt.toISOString()
+      );
 
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         PAGE_TWO_FIXTURES,
-         ALL_FIXTURES.length - 1,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([PAGE_TWO_FIXTURES, ALL_FIXTURES.length - 1]);
 
       const req = makeReq({ limit: '3', offset: '3' });
       const res = makeRes();

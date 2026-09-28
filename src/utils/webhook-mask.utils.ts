@@ -15,10 +15,10 @@
  * // → '[invalid url]'
  */
 export function maskWebhookUrl(url: string): string {
-    try {
-        const parsed = new URL(url);
-        return parsed.origin;
-    } catch {
-        return '[invalid url]';
-    }
+   try {
+      const parsed = new URL(url);
+      return parsed.origin;
+   } catch {
+      return '[invalid url]';
+   }
 }

@@ -1,5 +1,7 @@
 jest.mock('../../utils/queue-metrics.utils', () => ({
-   getQueueDepths: jest.fn(() => [{ queue: 'ingest', state: 'pending', depth: 3 }]),
+   getQueueDepths: jest.fn(() => [
+      { queue: 'ingest', state: 'pending', depth: 3 },
+   ]),
 }));
 
 jest.mock('../../utils/creator-read-metrics.utils', () => ({

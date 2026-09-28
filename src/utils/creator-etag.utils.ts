@@ -13,9 +13,7 @@ export const CREATOR_ETAG_HEADER = 'ETag';
  * @returns A quoted strong ETag string, e.g. `"abc123..."`
  */
 export function computeCreatorETag(data: unknown): string {
-   const hash = createHash('sha256')
-      .update(JSON.stringify(data))
-      .digest('hex');
+   const hash = createHash('sha256').update(JSON.stringify(data)).digest('hex');
    return `"${hash}"`;
 }
 
@@ -37,7 +35,10 @@ export function computeCreatorETag(data: unknown): string {
  * // Pre-computed:
  * attachCreatorETagHeader(res, '"abc123"');
  */
-export function attachCreatorETagHeader(res: Response, etagOrData: string | unknown): void {
+export function attachCreatorETagHeader(
+   res: Response,
+   etagOrData: string | unknown
+): void {
    const etag =
       typeof etagOrData === 'string' && /^"[^"]*"$/.test(etagOrData)
          ? etagOrData

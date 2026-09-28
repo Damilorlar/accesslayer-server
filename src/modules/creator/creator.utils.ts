@@ -69,7 +69,7 @@ export function toPrismaOrderBy(
 export async function resolveCreatorSlugCollision(
    displayName: string
 ): Promise<string> {
-   return resolveSlugCollision(displayName, async (handle) => {
+   return resolveSlugCollision(displayName, async handle => {
       const existing = await prisma.creatorProfile.findUnique({
          where: { handle },
          select: { id: true },

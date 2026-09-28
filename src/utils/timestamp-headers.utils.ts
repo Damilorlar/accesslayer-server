@@ -34,6 +34,9 @@ export function formatTimestampHeader(date: Date = new Date()): string {
  * attachTimestampHeader(res);
  * sendSuccess(res, data);
  */
-export function attachTimestampHeader(res: Response, date: Date = new Date()): void {
+export function attachTimestampHeader(
+   res: Response,
+   date: Date = new Date()
+): void {
    res.set(RESPONSE_TIMESTAMP_HEADER, formatTimestampHeader(date));
 }

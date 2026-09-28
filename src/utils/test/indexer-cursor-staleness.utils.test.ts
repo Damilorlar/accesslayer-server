@@ -31,7 +31,9 @@ const findFirstMock = prisma.indexedLedger.findFirst as jest.Mock;
 beforeEach(() => {
    warnMock.mockClear();
    findFirstMock.mockReset();
-   (envConfig as { ENABLE_INDEXER_CURSOR_STALENESS_WARNING: boolean }).ENABLE_INDEXER_CURSOR_STALENESS_WARNING = true;
+   (
+      envConfig as { ENABLE_INDEXER_CURSOR_STALENESS_WARNING: boolean }
+   ).ENABLE_INDEXER_CURSOR_STALENESS_WARNING = true;
 });
 
 describe('warnIfIndexerCursorStale()', () => {
@@ -84,7 +86,9 @@ describe('warnIfIndexerCursorStale()', () => {
    });
 
    it('does not emit a warning when ENABLE_INDEXER_CURSOR_STALENESS_WARNING is false', () => {
-      (envConfig as { ENABLE_INDEXER_CURSOR_STALENESS_WARNING: boolean }).ENABLE_INDEXER_CURSOR_STALENESS_WARNING = false;
+      (
+         envConfig as { ENABLE_INDEXER_CURSOR_STALENESS_WARNING: boolean }
+      ).ENABLE_INDEXER_CURSOR_STALENESS_WARNING = false;
       const sixMinutesAgo = new Date(Date.now() - 360_000);
       warnIfIndexerCursorStale(sixMinutesAgo, 300_000);
       expect(warnMock).not.toHaveBeenCalled();

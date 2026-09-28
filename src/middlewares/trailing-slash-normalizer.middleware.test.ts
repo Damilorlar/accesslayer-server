@@ -23,7 +23,10 @@ describe('normalizeTrailingSlash middleware', () => {
    let next: jest.Mock<void, []>;
 
    beforeEach(() => {
-      next = jest.fn() as jest.Mock<void, NextFunction extends (...args: any[]) => any ? [] : never>;
+      next = jest.fn() as jest.Mock<
+         void,
+         NextFunction extends (...args: any[]) => any ? [] : never
+      >;
    });
 
    // ── next() is always called ──────────────────────────────────────────────

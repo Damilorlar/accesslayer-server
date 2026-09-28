@@ -28,26 +28,26 @@ import { ActivityQueryType } from './activity.schemas';
  * ```
  */
 export function buildActivityFeedCacheKey(query: ActivityQueryType): string {
-    const parts: string[] = ['activity'];
+   const parts: string[] = ['activity'];
 
-    // Add pagination parameters
-    parts.push(`limit:${query.limit}`);
-    parts.push(`offset:${query.offset}`);
+   // Add pagination parameters
+   parts.push(`limit:${query.limit}`);
+   parts.push(`offset:${query.offset}`);
 
-    // Add filter parameters if present
-    if (query.creatorId) {
-        parts.push(`creatorId:${query.creatorId}`);
-    }
+   // Add filter parameters if present
+   if (query.creatorId) {
+      parts.push(`creatorId:${query.creatorId}`);
+   }
 
-    if (query.actor) {
-        parts.push(`actor:${query.actor}`);
-    }
+   if (query.actor) {
+      parts.push(`actor:${query.actor}`);
+   }
 
-    if (query.type) {
-        parts.push(`type:${query.type}`);
-    }
+   if (query.type) {
+      parts.push(`type:${query.type}`);
+   }
 
-    return parts.join(':');
+   return parts.join(':');
 }
 
 /**
@@ -68,10 +68,10 @@ export function buildActivityFeedCacheKey(query: ActivityQueryType): string {
  * the affected creator or actor.
  */
 export const ACTIVITY_FEED_CACHE_INVALIDATION_TOUCHPOINTS = {
-    CREATOR_REGISTERED: 'creator:registered',
-    KEY_BOUGHT: 'key:bought',
-    KEY_SOLD: 'key:sold',
-    PROFILE_UPDATED: 'profile:updated',
+   CREATOR_REGISTERED: 'creator:registered',
+   KEY_BOUGHT: 'key:bought',
+   KEY_SOLD: 'key:sold',
+   PROFILE_UPDATED: 'profile:updated',
 } as const;
 
 /**
@@ -90,7 +90,7 @@ export const ACTIVITY_FEED_CACHE_INVALIDATION_TOUCHPOINTS = {
  * ```
  */
 export function buildActivityFeedInvalidationKeys(creatorId: string): string[] {
-    // Invalidate all activity feed entries for this creator
-    // regardless of pagination or other filters
-    return [`activity:*:creatorId:${creatorId}:*`];
+   // Invalidate all activity feed entries for this creator
+   // regardless of pagination or other filters
+   return [`activity:*:creatorId:${creatorId}:*`];
 }

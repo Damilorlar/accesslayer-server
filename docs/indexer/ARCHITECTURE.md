@@ -3,6 +3,7 @@
 End-to-end architecture of the indexer pipeline: how on-chain Stellar events travel from the external polling worker through to all three database destinations on this server.
 
 See also:
+
 - [Indexer Contributor Expectations](./CONTRIBUTOR_EXPECTATIONS.md)
 - [Chain Event Processing](./EVENT_PROCESSING.md) — deduplication and idempotency detail
 - [Retry and Backoff](./RETRY_BACKOFF.md) — retry strategy and exhaustion behaviour
@@ -46,10 +47,10 @@ The external worker delivers events to this server as `ChainEvent[]`, defined in
 
 ```typescript
 interface ChainEvent {
-  txHash: string;       // Transaction hash — unique across the chain
-  eventIndex: number;   // Index of the event within the transaction
-  ledger?: number;      // Optional ledger sequence number
-  [key: string]: any;   // Additional event-specific fields
+   txHash: string; // Transaction hash — unique across the chain
+   eventIndex: number; // Index of the event within the transaction
+   ledger?: number; // Optional ledger sequence number
+   [key: string]: any; // Additional event-specific fields
 }
 ```
 
@@ -67,24 +68,24 @@ Raw Stellar events are cast to `IndexerChainEvent` (defined in `src/utils/indexe
 
 ```typescript
 interface IndexerChainEvent extends ChainEvent {
-  eventType: string;  // e.g. 'KEY_BOUGHT', 'KEY_SOLD', 'CREATOR_REGISTERED'
+   eventType: string; // e.g. 'KEY_BOUGHT', 'KEY_SOLD', 'CREATOR_REGISTERED'
 }
 ```
 
 Extraction of typed fields from raw Soroban contract data happens **in the external worker** before events reach this server. By the time events enter `processIndexerChainEvents`, they already carry the following fields:
 
-| Field        | Type     | Description                                           |
-| :----------- | :------- | :---------------------------------------------------- |
-| `txHash`     | string   | Stable dedup key and log correlation ID prefix        |
-| `eventIndex` | number   | Per-transaction index; combined with `txHash` for ID  |
-| `ledger`     | number   | Stellar ledger sequence number                        |
-| `eventType`  | string   | `KEY_BOUGHT` or `KEY_SOLD` for trade events           |
-| `creatorId`  | string   | Which creator's key was traded                        |
-| `actor`      | string   | Buyer or seller wallet address                        |
-| `amount`     | number   | Number of keys traded                                 |
-| `price`      | bigint   | Price in stroops                                      |
-| `feePaid`    | bigint   | Protocol fees in stroops                              |
-| `tradeAt`    | Date     | ISO timestamp of the transaction                      |
+| Field        | Type   | Description                                          |
+| :----------- | :----- | :--------------------------------------------------- |
+| `txHash`     | string | Stable dedup key and log correlation ID prefix       |
+| `eventIndex` | number | Per-transaction index; combined with `txHash` for ID |
+| `ledger`     | number | Stellar ledger sequence number                       |
+| `eventType`  | string | `KEY_BOUGHT` or `KEY_SOLD` for trade events          |
+| `creatorId`  | string | Which creator's key was traded                       |
+| `actor`      | string | Buyer or seller wallet address                       |
+| `amount`     | number | Number of keys traded                                |
+| `price`      | bigint | Price in stroops                                     |
+| `feePaid`    | bigint | Protocol fees in stroops                             |
+| `tradeAt`    | Date   | ISO timestamp of the transaction                     |
 
 `processIndexerChainEvents(events, handler)` in `src/utils/indexer-event-processor.utils.ts` wraps the processing loop: it first calls `dedupeChainEvents` internally (removing duplicates by `txHash:eventIndex`), then runs the provided `handler` for each unique event. Each event emits exactly one structured `info` log (`type: 'indexer_event_processed'`) with `elapsedMs` measured from a monotonic clock.
 

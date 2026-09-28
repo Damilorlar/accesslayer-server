@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import {
-  healthCheck,
-  readinessCheck,
-  simpleHealthCheck,
-  indexerHeartbeatCheck,
-  recordIndexerHeartbeat,
+   healthCheck,
+   readinessCheck,
+   simpleHealthCheck,
+   indexerHeartbeatCheck,
+   recordIndexerHeartbeat,
 } from './health.controllers';
 
 const router = Router();

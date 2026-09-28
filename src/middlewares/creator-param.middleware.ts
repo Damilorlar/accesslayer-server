@@ -24,29 +24,29 @@ const CREATOR_PARAM_PATTERN = /^[a-zA-Z0-9_-]{1,128}$/;
  * router.get('/:id/stats', validateCreatorParam('id'), handler);
  */
 export function validateCreatorParam(paramName: string) {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    const value = req.params[paramName];
+   return (req: Request, res: Response, next: NextFunction): void => {
+      const value = req.params[paramName];
 
-    if (!value || typeof value !== 'string') {
-      sendValidationError(res, 'Invalid creator parameter', [
-        {
-          field: paramName,
-          message: `Route parameter '${paramName}' is required`,
-        },
-      ]);
-      return;
-    }
+      if (!value || typeof value !== 'string') {
+         sendValidationError(res, 'Invalid creator parameter', [
+            {
+               field: paramName,
+               message: `Route parameter '${paramName}' is required`,
+            },
+         ]);
+         return;
+      }
 
-    if (!CREATOR_PARAM_PATTERN.test(value)) {
-      sendValidationError(res, 'Invalid creator parameter', [
-        {
-          field: paramName,
-          message: `Route parameter '${paramName}' contains invalid characters or exceeds maximum length`,
-        },
-      ]);
-      return;
-    }
+      if (!CREATOR_PARAM_PATTERN.test(value)) {
+         sendValidationError(res, 'Invalid creator parameter', [
+            {
+               field: paramName,
+               message: `Route parameter '${paramName}' contains invalid characters or exceeds maximum length`,
+            },
+         ]);
+         return;
+      }
 
-    next();
-  };
+      next();
+   };
 }

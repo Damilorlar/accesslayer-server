@@ -4,14 +4,14 @@ import { creatorListIncludeQueryParam } from './creators.include.parse';
 import { withCreatorListQueryStringNormalization } from './creators.query-string.utils';
 import { safeBooleanQueryParam, safeIntParam } from '../../utils/query.utils';
 import {
-  MIN_PAGE_SIZE,
-  MAX_PAGE_SIZE,
+   MIN_PAGE_SIZE,
+   MAX_PAGE_SIZE,
 } from '../../constants/pagination.constants';
 import { PUBLIC_OFFSET_PAGINATION_DEFAULTS } from '../../utils/public-list-query-defaults';
 
 import {
-  CREATOR_LIST_SORT_FIELDS,
-  DEFAULT_CREATOR_LIST_SORT,
+   CREATOR_LIST_SORT_FIELDS,
+   DEFAULT_CREATOR_LIST_SORT,
 } from '../../constants/creator-list-sort.constants';
 import { resolveCreatorListLimit } from './creators.limit.utils';
 import { normalizeCreatorListSearchTerm } from './creators.search-term.utils';
@@ -26,78 +26,78 @@ import { normalizeCreatorListSearchTerm } from './creators.search-term.utils';
  * GET /api/v1/creators?limit=20&offset=0&sort=createdAt&order=desc&verified=true
  */
 export const CreatorListQuerySchema = z
-  .object({
-    // Pagination
-    limit: safeIntParam({
-      defaultValue:
-        resolveCreatorListLimit() ??
-        PUBLIC_OFFSET_PAGINATION_DEFAULTS.limit,
-      min: MIN_PAGE_SIZE,
-      max: MAX_PAGE_SIZE,
-      label: 'Limit',
-    }),
+   .object({
+      // Pagination
+      limit: safeIntParam({
+         defaultValue:
+            resolveCreatorListLimit() ??
+            PUBLIC_OFFSET_PAGINATION_DEFAULTS.limit,
+         min: MIN_PAGE_SIZE,
+         max: MAX_PAGE_SIZE,
+         label: 'Limit',
+      }),
 
-    offset: safeIntParam({
-      defaultValue: PUBLIC_OFFSET_PAGINATION_DEFAULTS.offset,
-      min: 0,
-      max: Number.MAX_SAFE_INTEGER,
-      label: 'Offset',
-    }),
+      offset: safeIntParam({
+         defaultValue: PUBLIC_OFFSET_PAGINATION_DEFAULTS.offset,
+         min: 0,
+         max: Number.MAX_SAFE_INTEGER,
+         label: 'Offset',
+      }),
 
-    // Sorting
-    sort: withCreatorListQueryStringNormalization(
-      z
-        .enum(CREATOR_LIST_SORT_FIELDS)
-        .optional()
-        .default(DEFAULT_CREATOR_LIST_SORT)
-    ),
+      // Sorting
+      sort: withCreatorListQueryStringNormalization(
+         z
+            .enum(CREATOR_LIST_SORT_FIELDS)
+            .optional()
+            .default(DEFAULT_CREATOR_LIST_SORT)
+      ),
 
-    order: creatorListSortDirectionQueryParam(),
+      order: creatorListSortDirectionQueryParam(),
 
-    include: creatorListIncludeQueryParam(),
+      include: creatorListIncludeQueryParam(),
 
-    // Filters
-    verified: safeBooleanQueryParam({
-      paramName: 'verified',
-    }),
+      // Filters
+      verified: safeBooleanQueryParam({
+         paramName: 'verified',
+      }),
 
-    search: withCreatorListQueryStringNormalization(
-      z
-        .string()
-        .optional()
-        .transform((val: string | undefined) => normalizeCreatorListSearchTerm(val))
-    ),
+      search: withCreatorListQueryStringNormalization(
+         z
+            .string()
+            .optional()
+            .transform((val: string | undefined) =>
+               normalizeCreatorListSearchTerm(val)
+            )
+      ),
 
-    // Price range filters
-    minPrice: z
-      .string()
-      .regex(/^\d+$/, 'minPrice must be a positive integer')
-      .transform((val) => BigInt(val))
-      .optional(),
+      // Price range filters
+      minPrice: z
+         .string()
+         .regex(/^\d+$/, 'minPrice must be a positive integer')
+         .transform(val => BigInt(val))
+         .optional(),
 
-    maxPrice: z
-      .string()
-      .regex(/^\d+$/, 'maxPrice must be a positive integer')
-      .transform((val) => BigInt(val))
-      .optional(),
+      maxPrice: z
+         .string()
+         .regex(/^\d+$/, 'maxPrice must be a positive integer')
+         .transform(val => BigInt(val))
+         .optional(),
 
-    cursor: withCreatorListQueryStringNormalization(
-      z.string().optional()
-    ),
-  })
-  .strict()
-  .refine(
-    (data) => {
-      if (data.minPrice !== undefined && data.maxPrice !== undefined) {
-        return data.minPrice <= data.maxPrice;
+      cursor: withCreatorListQueryStringNormalization(z.string().optional()),
+   })
+   .strict()
+   .refine(
+      data => {
+         if (data.minPrice !== undefined && data.maxPrice !== undefined) {
+            return data.minPrice <= data.maxPrice;
+         }
+         return true;
+      },
+      {
+         message: 'minPrice cannot be greater than maxPrice',
+         path: ['minPrice'],
       }
-      return true;
-    },
-    {
-      message: 'minPrice cannot be greater than maxPrice',
-      path: ['minPrice'],
-    }
-  );
+   );
 
 // Export as LegacyCreatorQuerySchema for backward compatibility
 export const LegacyCreatorQuerySchema = CreatorListQuerySchema;
@@ -108,21 +108,25 @@ export type CreatorListQueryType = z.infer<typeof CreatorListQuerySchema>;
  * Validation schema for individual creator perks.
  */
 export const CreatorPerkSchema = z.object({
-  id: z.string().cuid().optional().or(z.string().uuid()),
-  title: z.string().min(1, 'Title is required').max(100),
-  description: z.string().min(1, 'Description is required').max(500),
-  icon: z.string().optional(),
+   id: z.string().cuid().optional().or(z.string().uuid()),
+   title: z.string().min(1, 'Title is required').max(100),
+   description: z.string().min(1, 'Description is required').max(500),
+   icon: z.string().optional(),
 });
 
 /**
  * Validation schema for updating a creator profile.
  */
-export const UpdateCreatorProfileSchema = z.object({
-  displayName: z.string().min(1).max(100).optional(),
-  bio: z.string().max(1000).optional(),
-  avatarUrl: z.string().url().optional().or(z.literal('')),
-  perkSummary: z.string().max(200).optional(),
-  perks: z.array(CreatorPerkSchema).optional(),
-}).strict();
+export const UpdateCreatorProfileSchema = z
+   .object({
+      displayName: z.string().min(1).max(100).optional(),
+      bio: z.string().max(1000).optional(),
+      avatarUrl: z.string().url().optional().or(z.literal('')),
+      perkSummary: z.string().max(200).optional(),
+      perks: z.array(CreatorPerkSchema).optional(),
+   })
+   .strict();
 
-export type UpdateCreatorProfileType = z.infer<typeof UpdateCreatorProfileSchema>;
+export type UpdateCreatorProfileType = z.infer<
+   typeof UpdateCreatorProfileSchema
+>;

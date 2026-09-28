@@ -103,4 +103,3 @@ describe('GET /api/v1/creators — default sort when sort is omitted', () => {
       );
    });
 });
-

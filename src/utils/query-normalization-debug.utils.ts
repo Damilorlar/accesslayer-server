@@ -30,12 +30,14 @@ const SANITIZED_VALUE = '[REDACTED]';
  */
 function isSensitiveField(fieldName: string): boolean {
    const lowerField = fieldName.toLowerCase();
-   return SENSITIVE_FIELD_PATTERNS.some(pattern => lowerField.includes(pattern));
+   return SENSITIVE_FIELD_PATTERNS.some(pattern =>
+      lowerField.includes(pattern)
+   );
 }
 
 /**
  * Recursively sanitize an object by replacing sensitive field values.
- * 
+ *
  * @param obj - Object to sanitize
  * @returns Sanitized copy of the object
  */
@@ -85,15 +87,15 @@ export interface QueryNormalizationSnapshot {
 
 /**
  * Emit a debug snapshot of query normalization results.
- * 
+ *
  * This helper is only active when the logger level is set to 'debug' or lower.
  * It sanitizes sensitive fields before logging to prevent data leakage.
- * 
+ *
  * Use this to diagnose query parsing issues, understand normalization behavior,
  * or validate that query transformations are working as expected.
- * 
+ *
  * @param snapshot - Query normalization snapshot data
- * 
+ *
  * @example
  * // In a query parser
  * const parsed = parsePublicQuery(schema, rawQuery);
@@ -115,8 +117,14 @@ export function emitQueryNormalizationDebug(
 
    // Build query signature if raw query is an object
    let querySignature: string | undefined;
-   if (typeof snapshot.raw === 'object' && snapshot.raw !== null && !Array.isArray(snapshot.raw)) {
-      querySignature = buildQuerySignature(snapshot.raw as Record<string, unknown>);
+   if (
+      typeof snapshot.raw === 'object' &&
+      snapshot.raw !== null &&
+      !Array.isArray(snapshot.raw)
+   ) {
+      querySignature = buildQuerySignature(
+         snapshot.raw as Record<string, unknown>
+      );
    }
 
    const sanitizedSnapshot: QueryNormalizationSnapshot = {
@@ -137,16 +145,16 @@ export function emitQueryNormalizationDebug(
 
 /**
  * Create a query normalization debug emitter with a fixed context label.
- * 
+ *
  * This is useful for creating a reusable debug helper for a specific endpoint
  * or query type without repeating the context label.
- * 
+ *
  * @param context - Context label for all snapshots from this emitter
  * @returns Function that emits debug snapshots with the fixed context
- * 
+ *
  * @example
  * const debugCreatorQuery = createQueryDebugEmitter('creator-list');
- * 
+ *
  * // Later in code
  * debugCreatorQuery({
  *   raw: req.query,
@@ -155,7 +163,12 @@ export function emitQueryNormalizationDebug(
  * });
  */
 export function createQueryDebugEmitter(context: string) {
-   return (snapshot: Omit<QueryNormalizationSnapshot, 'timestamp' | 'context' | 'querySignature'>) => {
+   return (
+      snapshot: Omit<
+         QueryNormalizationSnapshot,
+         'timestamp' | 'context' | 'querySignature'
+      >
+   ) => {
       emitQueryNormalizationDebug({ ...snapshot, context });
    };
 }

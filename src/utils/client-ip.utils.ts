@@ -7,13 +7,13 @@ import { Request } from 'express';
  * is ignored.
  */
 const TRUSTED_PROXY_CIDRS = [
-  { prefix: '127.',    bits: 8  },  // 127.0.0.0/8 — loopback
-  { prefix: '10.',     bits: 8  },  // 10.0.0.0/8  — private class A
-  { prefix: '172.16.', bits: 12 },  // 172.16.0.0/12 — private class B
-  { prefix: '192.168.', bits: 16 }, // 192.168.0.0/16 — private class C
-  { prefix: '::1',     bits: 128 }, // IPv6 loopback
-  { prefix: 'fc00:',   bits: 7  },  // IPv6 unique-local
-  { prefix: 'fd',      bits: 8  },  // IPv6 unique-local (fd00::/8)
+   { prefix: '127.', bits: 8 }, // 127.0.0.0/8 — loopback
+   { prefix: '10.', bits: 8 }, // 10.0.0.0/8  — private class A
+   { prefix: '172.16.', bits: 12 }, // 172.16.0.0/12 — private class B
+   { prefix: '192.168.', bits: 16 }, // 192.168.0.0/16 — private class C
+   { prefix: '::1', bits: 128 }, // IPv6 loopback
+   { prefix: 'fc00:', bits: 7 }, // IPv6 unique-local
+   { prefix: 'fd', bits: 8 }, // IPv6 unique-local (fd00::/8)
 ];
 
 /**
@@ -24,9 +24,7 @@ const TRUSTED_PROXY_CIDRS = [
  * deployment uses a known set of proxy IPs).
  */
 function isFromTrustedProxy(ip: string): boolean {
-  return TRUSTED_PROXY_CIDRS.some(({ prefix }) =>
-    ip.startsWith(prefix)
-  );
+   return TRUSTED_PROXY_CIDRS.some(({ prefix }) => ip.startsWith(prefix));
 }
 
 /**
@@ -45,19 +43,19 @@ function isFromTrustedProxy(ip: string): boolean {
  *                    Defaults to the private/loopback CIDR check above.
  */
 export function getClientIp(
-  req: Request,
-  trusted: (ip: string) => boolean = isFromTrustedProxy
+   req: Request,
+   trusted: (ip: string) => boolean = isFromTrustedProxy
 ): string | undefined {
-  const socketIp = req.socket?.remoteAddress ?? '';
+   const socketIp = req.socket?.remoteAddress ?? '';
 
-  if (trusted(socketIp)) {
-    const forwarded = req.headers['x-forwarded-for'];
-    if (forwarded) {
-      const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
-      const firstIp = raw.split(',')[0].trim();
-      if (firstIp) return firstIp;
-    }
-  }
+   if (trusted(socketIp)) {
+      const forwarded = req.headers['x-forwarded-for'];
+      if (forwarded) {
+         const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+         const firstIp = raw.split(',')[0].trim();
+         if (firstIp) return firstIp;
+      }
+   }
 
-  return socketIp || undefined;
+   return socketIp || undefined;
 }

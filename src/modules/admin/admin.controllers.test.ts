@@ -1,104 +1,195 @@
-import { httpReplayIndexerEvents } from './admin.controllers';
+import { httpReplayIndexerEvents, httpUpdateCreatorMetadata } from './admin.controllers';
 import { emitAuditEvent } from '../../utils/audit.utils';
 import { AdminRequest } from '../../middlewares/admin-guard.middleware';
 import { Response } from 'express';
 
 jest.mock('../../utils/background-job-lock.utils', () => ({
-  acquireJobLock: jest.fn(() => ({
-    acquired: true,
-    expiresAt: '2026-01-01T00:00:00.000Z',
-  })),
+   acquireJobLock: jest.fn(() => ({
+      acquired: true,
+      expiresAt: '2026-01-01T00:00:00.000Z',
+   })),
 }));
 
 jest.mock('../../utils/prisma.utils', () => ({
-  prisma: {
-    creatorProfile: {
-      findUnique: jest.fn(),
-      update: jest.fn(),
-    },
-  },
+   prisma: {
+      creatorProfile: {
+         findUnique: jest.fn(),
+         update: jest.fn(),
+      },
+   },
 }));
 
 jest.mock('../../utils/audit.utils', () => ({
-  emitAuditEvent: jest.fn(),
+   emitAuditEvent: jest.fn(),
 }));
 
 describe('httpReplayIndexerEvents', () => {
-  const next = jest.fn();
+   const next = jest.fn();
 
-  const createRes = (): Response =>
-    ({
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
-    }) as unknown as Response;
+   const createRes = (): Response =>
+      ({
+         status: jest.fn().mockReturnThis(),
+         json: jest.fn(),
+      }) as unknown as Response;
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+   beforeEach(() => {
+      jest.clearAllMocks();
+   });
 
-  it('returns validation error when dryRun is not a boolean', async () => {
-    const req = {
-      body: { startLedger: 10, dryRun: 'true' },
-      adminId: 'admin-1',
-    } as unknown as AdminRequest;
-    const res = createRes();
+   it('returns validation error when dryRun is not a boolean', async () => {
+      const req = {
+         body: { startLedger: 10, dryRun: 'true' },
+         adminId: 'admin-1',
+      } as unknown as AdminRequest;
+      const res = createRes();
 
-    await httpReplayIndexerEvents(req, res, next);
+      await httpReplayIndexerEvents(req, res, next);
 
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        success: false,
-        error: expect.objectContaining({
-          message: 'Invalid request body',
-          details: expect.arrayContaining([expect.objectContaining({ field: 'dryRun' })]),
-        }),
-      })
-    );
-    expect(emitAuditEvent).not.toHaveBeenCalled();
-  });
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+         expect.objectContaining({
+            success: false,
+            error: expect.objectContaining({
+               message: 'Invalid request body',
+               details: expect.arrayContaining([
+                  expect.objectContaining({ field: 'dryRun' }),
+               ]),
+            }),
+         })
+      );
+      expect(emitAuditEvent).not.toHaveBeenCalled();
+   });
 
-  it('does not emit audit event when dryRun=true', async () => {
-    const req = {
-      body: { startLedger: 20, dryRun: true },
-      adminId: 'admin-2',
-    } as unknown as AdminRequest;
-    const res = createRes();
+   it('does not emit audit event when dryRun=true', async () => {
+      const req = {
+         body: { startLedger: 20, dryRun: true },
+         adminId: 'admin-2',
+      } as unknown as AdminRequest;
+      const res = createRes();
 
-    await httpReplayIndexerEvents(req, res, next);
+      await httpReplayIndexerEvents(req, res, next);
 
-    expect(emitAuditEvent).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        success: true,
-        data: expect.objectContaining({
-          type: 'INDEXER_REPLAY_INITIATED',
-          startLedger: 20,
-          dryRun: true,
-          initiatedBy: 'admin-2',
-        }),
-      })
-    );
-  });
+      expect(emitAuditEvent).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+         expect.objectContaining({
+            success: true,
+            data: expect.objectContaining({
+               type: 'INDEXER_REPLAY_INITIATED',
+               startLedger: 20,
+               dryRun: true,
+               initiatedBy: 'admin-2',
+            }),
+         })
+      );
+   });
 
-  it('emits audit event when dryRun=false', async () => {
-    const req = {
-      body: { startLedger: 30, dryRun: false },
-      adminId: 'admin-3',
-    } as unknown as AdminRequest;
-    const res = createRes();
+   it('emits audit event when dryRun=false', async () => {
+      const req = {
+         body: { startLedger: 30, dryRun: false },
+         adminId: 'admin-3',
+      } as unknown as AdminRequest;
+      const res = createRes();
 
-    await httpReplayIndexerEvents(req, res, next);
+      await httpReplayIndexerEvents(req, res, next);
 
-    expect(emitAuditEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        actor: 'admin-3',
-        action: 'replay_indexer_events',
-        targetId: '30',
-        metadata: expect.objectContaining({ startLedger: 30, dryRun: false }),
-      })
-    );
-    expect(res.status).toHaveBeenCalledWith(200);
-  });
+      expect(emitAuditEvent).toHaveBeenCalledWith(
+         expect.objectContaining({
+            actor: 'admin-3',
+            action: 'replay_indexer_events',
+            targetId: '30',
+            metadata: expect.objectContaining({
+               startLedger: 30,
+               dryRun: false,
+            }),
+         })
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+   });
+});
+
+describe('httpUpdateCreatorMetadata — tradingPaused', () => {
+   const { prisma } = require('../../utils/prisma.utils');
+   const next = jest.fn();
+
+   const createRes = (): Response =>
+      ({
+         status: jest.fn().mockReturnThis(),
+         json: jest.fn(),
+         set: jest.fn().mockReturnThis(),
+         header: jest.fn().mockReturnThis(),
+      }) as unknown as Response;
+
+   beforeEach(() => {
+      jest.clearAllMocks();
+   });
+
+   it('persists tradingPaused and emits a pause audit event', async () => {
+      prisma.creatorProfile.findUnique.mockResolvedValue({
+         id: 'creator-1',
+         isVerified: false,
+         tradingPaused: false,
+      });
+      prisma.creatorProfile.update.mockResolvedValue({
+         id: 'creator-1',
+         isVerified: false,
+         tradingPaused: true,
+      });
+
+      const req = {
+         params: { id: 'creator-1' },
+         headers: { 'x-admin-id': 'admin-9' },
+         body: { tradingPaused: true },
+      } as unknown as AdminRequest;
+      const res = createRes();
+
+      await httpUpdateCreatorMetadata(req, res, next);
+
+      expect(prisma.creatorProfile.update).toHaveBeenCalledWith({
+         where: { id: 'creator-1' },
+         data: { tradingPaused: true },
+      });
+      expect(emitAuditEvent).toHaveBeenCalledWith(
+         expect.objectContaining({
+            actor: 'admin-9',
+            action: 'pause_creator_trading',
+            targetId: 'creator-1',
+            metadata: expect.objectContaining({
+               tradingPaused: expect.objectContaining({ before: false, after: true }),
+            }),
+         })
+      );
+   });
+
+   it('emits a resume audit event when unpausing', async () => {
+      prisma.creatorProfile.findUnique.mockResolvedValue({
+         id: 'creator-2',
+         isVerified: false,
+         tradingPaused: true,
+      });
+      prisma.creatorProfile.update.mockResolvedValue({
+         id: 'creator-2',
+         isVerified: false,
+         tradingPaused: false,
+      });
+
+      const req = {
+         params: { id: 'creator-2' },
+         headers: { 'x-admin-id': 'admin-10' },
+         body: { tradingPaused: false },
+      } as unknown as AdminRequest;
+      const res = createRes();
+
+      await httpUpdateCreatorMetadata(req, res, next);
+
+      expect(emitAuditEvent).toHaveBeenCalledWith(
+         expect.objectContaining({
+            action: 'resume_creator_trading',
+            targetId: 'creator-2',
+            metadata: expect.objectContaining({
+               tradingPaused: expect.objectContaining({ before: true, after: false }),
+            }),
+         })
+      );
+   });
 });

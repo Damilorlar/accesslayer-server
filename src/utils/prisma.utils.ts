@@ -3,10 +3,12 @@ import { createHash } from 'crypto';
 import { envConfig } from '../config';
 import { requestContextStorage } from './als.utils';
 import { logger } from './logger.utils';
+import { describeDatabasePoolConfig } from './db-pool-config.utils';
+import { logDbPoolAcquire, logDbPoolRelease } from './db-pool-log.utils';
 
 // Use global variable to prevent multiple instances in development
 declare global {
-  var prisma: any | undefined;
+   var prisma: any | undefined;
 }
 
 /**
@@ -14,23 +16,34 @@ declare global {
  * resulting structure identifies the query pattern without exposing any values.
  */
 function normalizeArgsForFingerprint(value: unknown, depth = 0): unknown {
-  if (depth > 8) return '?';
-  if (value === null || value === undefined) return value;
-  if (Array.isArray(value)) {
-    return value.map((item) => normalizeArgsForFingerprint(item, depth + 1));
-  }
-  if (typeof value === 'object') {
-    const sorted = Object.keys(value as object).sort();
-    const result: Record<string, unknown> = {};
-    for (const key of sorted) {
-      result[key] = normalizeArgsForFingerprint(
-        (value as Record<string, unknown>)[key],
-        depth + 1
-      );
-    }
-    return result;
-  }
-  return '?';
+   if (depth > 8) return '?';
+   if (value === null || value === undefined) return value;
+   if (Array.isArray(value)) {
+      return value.map(item => normalizeArgsForFingerprint(item, depth + 1));
+   }
+   if (typeof value === 'object') {
+      const sorted = Object.keys(value as object).sort();
+      const result: Record<string, unknown> = {};
+      for (const key of sorted) {
+         result[key] = normalizeArgsForFingerprint(
+            (value as Record<string, unknown>)[key],
+            depth + 1
+         );
+      }
+      return result;
+   }
+   return '?';
+}
+
+/** Maps a Prisma client operation to the SQL verb it maps to, for logging. */
+function mapOperationToSqlVerb(
+   operation: string
+): 'select' | 'insert' | 'update' | 'delete' | string {
+   if (/^(find|count|aggregate|groupBy)/.test(operation)) return 'select';
+   if (/^create/.test(operation)) return 'insert';
+   if (/^(update|upsert)/.test(operation)) return 'update';
+   if (/^delete/.test(operation)) return 'delete';
+   return operation;
 }
 
 /**
@@ -38,27 +51,25 @@ function normalizeArgsForFingerprint(value: unknown, depth = 0): unknown {
  * operation, and arg structure) without including any parameter values.
  */
 function buildQueryFingerprint(
-  model: string | undefined,
-  operation: string,
-  args: unknown
+   model: string | undefined,
+   operation: string,
+   args: unknown
 ): string {
-  const normalized = {
-    model: model ?? 'unknown',
-    operation,
-    args: normalizeArgsForFingerprint(args),
-  };
-  return createHash('sha256')
-    .update(JSON.stringify(normalized))
-    .digest('hex')
-    .slice(0, 16);
+   const normalized = {
+      model: model ?? 'unknown',
+      operation,
+      args: normalizeArgsForFingerprint(args),
+   };
+   return createHash('sha256')
+      .update(JSON.stringify(normalized))
+      .digest('hex')
+      .slice(0, 16);
 }
 
 const basePrisma = new PrismaClient({
-  log:
-    envConfig.MODE === 'development'
-      ? ['query', 'error', 'warn']
-      : ['error'],
-  datasourceUrl: envConfig.DATABASE_URL,
+   log:
+      envConfig.MODE === 'development' ? ['query', 'error', 'warn'] : ['error'],
+   datasourceUrl: envConfig.DATABASE_URL,
 });
 
 // Track connection pool metrics and log when wait thresholds are exceeded
@@ -68,101 +79,136 @@ const queryStartTimes = new Map<symbol, number>();
 
 // Extend Prisma with query timeout, slow-query detection, and pool wait tracking
 export const prisma = basePrisma.$extends({
-  query: {
-    $allOperations({ operation, model, args, query }) {
-      const timeoutMs = envConfig.DB_QUERY_TIMEOUT_MS;
-      const slowThresholdMs = envConfig.SLOW_QUERY_THRESHOLD_MS;
-      const poolWarnThreshold = envConfig.DB_POOL_WAIT_WARN_MS;
-      const poolErrorThreshold = envConfig.DB_POOL_WAIT_ERROR_MS;
-      const context = requestContextStorage.getStore();
+   query: {
+      $allOperations({ operation, model, args, query }: any) {
+         const timeoutMs = envConfig.DB_QUERY_TIMEOUT_MS;
+         const slowThresholdMs = envConfig.SLOW_QUERY_THRESHOLD_MS;
+         const poolWarnThreshold = envConfig.DB_POOL_WAIT_WARN_MS;
+         const poolErrorThreshold = envConfig.DB_POOL_WAIT_ERROR_MS;
+         const context = requestContextStorage.getStore();
 
-      const queryId = Symbol();
-      const waitStart = Date.now();
-      activeQueries++;
+         const queryId = Symbol();
+         const waitStart = Date.now();
+         activeQueries++;
 
-      let timeoutId: NodeJS.Timeout;
-      let timedOut = false;
+         let timeoutId: NodeJS.Timeout;
+         let timedOut = false;
 
-      const timeoutPromise = new Promise((_, reject) => {
-        timeoutId = setTimeout(() => {
-          timedOut = true;
-          const logContext = {
-            type: 'database_timeout',
-            operation,
-            model,
-            timeoutMs,
-            path: context?.path,
-            method: context?.method,
-            requestId: context?.requestId,
-          };
-          logger.error(logContext, `Database query timed out after ${timeoutMs}ms`);
-          reject(new Error(`Database query timed out after ${timeoutMs}ms`));
-        }, timeoutMs);
-      });
+         const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => {
+               timedOut = true;
+               const logContext = {
+                  type: 'database_timeout',
+                  operation,
+                  model,
+                  timeoutMs,
+                  path: context?.path,
+                  method: context?.method,
+                  requestId: context?.requestId,
+               };
+               logger.error(
+                  logContext,
+                  `Database query timed out after ${timeoutMs}ms`
+               );
+               reject(
+                  new Error(`Database query timed out after ${timeoutMs}ms`)
+               );
+            }, timeoutMs);
+         });
 
-      const start = Date.now();
-      const queryPromise = query(args).finally(() => {
-        clearTimeout(timeoutId);
-        const waitTime = Date.now() - waitStart;
-        activeQueries--;
-        queryStartTimes.delete(queryId);
+         const poolConfig = describeDatabasePoolConfig();
+         const poolSize =
+            typeof poolConfig.poolSize === 'number' ? poolConfig.poolSize : 10;
 
-        // Log if wait time exceeds thresholds
-        if (waitTime > poolErrorThreshold) {
-          logger.error(
-            {
-              type: 'database_pool_wait_exceeded',
-              waitTimeMs: waitTime,
-              poolSize: 10, // Default Prisma pool size
-              queueDepth: activeQueries,
-              endpoint: context?.path,
-              operation,
-              model,
-              requestId: context?.requestId,
-            },
-            `Database connection pool wait time exceeded ${poolErrorThreshold}ms`
-          );
-        } else if (waitTime > poolWarnThreshold) {
-          logger.warn(
-            {
-              type: 'database_pool_wait_exceeded',
-              waitTimeMs: waitTime,
-              poolSize: 10, // Default Prisma pool size
-              queueDepth: activeQueries,
-              endpoint: context?.path,
-              operation,
-              model,
-              requestId: context?.requestId,
-            },
-            `Database connection pool wait time exceeded ${poolWarnThreshold}ms`
-          );
-        }
+         const acquiredAt = new Date();
+         const waitTimeMs = acquiredAt.getTime() - waitStart;
+         const acquireIdleCount = Math.max(0, poolSize - activeQueries);
 
-        if (!timedOut) {
-          const elapsedMs = Date.now() - start;
-          if (elapsedMs > slowThresholdMs) {
-            logger.warn(
-              {
-                type: 'slow_query',
-                model,
-                operation,
-                fingerprint: buildQueryFingerprint(model, operation, args),
-                elapsedMs,
-                thresholdMs: slowThresholdMs,
-                requestId: context?.requestId,
-              },
-              'Slow database query detected'
-            );
-          }
-        }
-      });
+         logDbPoolAcquire({
+            poolSize,
+            idleCount: acquireIdleCount,
+            waitTimeMs,
+            acquiredAt,
+         });
 
-      return Promise.race([queryPromise, timeoutPromise]);
-    },
-  },
+         const start = Date.now();
+         const queryPromise = query(args).finally(() => {
+            clearTimeout(timeoutId);
+            const waitTime = Date.now() - waitStart;
+            activeQueries--;
+            queryStartTimes.delete(queryId);
+
+            const heldForMs = Date.now() - acquiredAt.getTime();
+            const releaseIdleCount = Math.max(0, poolSize - activeQueries);
+            logDbPoolRelease({
+               poolSize,
+               idleCount: releaseIdleCount,
+               heldForMs,
+            });
+
+            // Log if wait time exceeds thresholds
+            if (waitTime > poolErrorThreshold) {
+               logger.error(
+                  {
+                     type: 'database_pool_wait_exceeded',
+                     waitTimeMs: waitTime,
+                     poolSize,
+                     queueDepth: activeQueries,
+                     endpoint: context?.path,
+                     operation,
+                     model,
+                     requestId: context?.requestId,
+                  },
+                  `Database connection pool wait time exceeded ${poolErrorThreshold}ms`
+               );
+            } else if (waitTime > poolWarnThreshold) {
+               logger.warn(
+                  {
+                     type: 'database_pool_wait_exceeded',
+                     waitTimeMs: waitTime,
+                     poolSize,
+                     queueDepth: activeQueries,
+                     endpoint: context?.path,
+                     operation,
+                     model,
+                     requestId: context?.requestId,
+                  },
+                  `Database connection pool wait time exceeded ${poolWarnThreshold}ms`
+               );
+            }
+
+            if (!timedOut) {
+               const elapsedMs = Date.now() - start;
+               if (elapsedMs > slowThresholdMs) {
+                  logger.warn(
+                     {
+                        type: 'slow_query',
+                        query_name: `${model ?? 'unknown'}.${operation}`,
+                        table: model,
+                        operation: mapOperationToSqlVerb(operation),
+                        duration_ms: elapsedMs,
+                        model,
+                        fingerprint: buildQueryFingerprint(
+                           model,
+                           operation,
+                           args
+                        ),
+                        elapsedMs,
+                        thresholdMs: slowThresholdMs,
+                        requestId: context?.requestId,
+                     },
+                     'Slow database query detected'
+                  );
+               }
+            }
+         });
+
+         return Promise.race([queryPromise, timeoutPromise]);
+      },
+   },
 });
 
 // Prevent multiple instances in development environment
 if (envConfig.MODE !== 'production') {
-  global.prisma = prisma;
+   global.prisma = prisma;
 }

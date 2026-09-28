@@ -3,10 +3,10 @@ import { RequestHandler } from 'express';
 
 // API response helpers
 import {
-  sendSuccess,
-  sendError,
-  sendValidationError,
-  ErrorCode,
+   sendSuccess,
+   sendError,
+   sendValidationError,
+   ErrorCode,
 } from '../../utils/api-response.utils';
 import { attachTimestampHeader } from '../../utils/timestamp-headers.utils';
 import { getPaginatedCreators } from './creator.service';
@@ -23,50 +23,52 @@ import { logger } from '../../utils/logger.utils';
 import { LegacyCreatorQuerySchema } from '../creators/creators.schemas';
 
 const ALLOWED_CREATOR_SELECT_FIELDS = [
-  'id',
-  'handle',
-  'displayName',
-  'bio',
-  'avatarUrl',
-  'bannerUrl',
-  'isVerified',
-  'keysSupply',
-  'floorPrice',
-  'createdAt',
-  'updatedAt',
+   'id',
+   'handle',
+   'displayName',
+   'bio',
+   'avatarUrl',
+   'bannerUrl',
+   'isVerified',
+   'keysSupply',
+   'floorPrice',
+   'createdAt',
+   'updatedAt',
 ] as const;
 
 type AllowedCreatorSelectField = (typeof ALLOWED_CREATOR_SELECT_FIELDS)[number];
 
 function parseSelectFields(raw: unknown): string[] {
-  if (typeof raw !== 'string' || !raw.trim()) {
-    return [];
-  }
+   if (typeof raw !== 'string' || !raw.trim()) {
+      return [];
+   }
 
-  return raw
-    .split(',')
-    .map((field) => field.trim())
-    .filter(Boolean);
+   return raw
+      .split(',')
+      .map(field => field.trim())
+      .filter(Boolean);
 }
 
 function getInvalidSelectFields(fields: string[]): string[] {
-  return fields.filter(
-    (field) =>
-      !ALLOWED_CREATOR_SELECT_FIELDS.includes(field as AllowedCreatorSelectField)
-  );
+   return fields.filter(
+      field =>
+         !ALLOWED_CREATOR_SELECT_FIELDS.includes(
+            field as AllowedCreatorSelectField
+         )
+   );
 }
 
 function pickFields<T extends Record<string, unknown>>(
-  item: T,
-  fields: string[]
+   item: T,
+   fields: string[]
 ): Partial<T> {
-  if (!fields.length) {
-    return item;
-  }
+   if (!fields.length) {
+      return item;
+   }
 
-  return Object.fromEntries(
-    Object.entries(item).filter(([key]) => fields.includes(key))
-  ) as Partial<T>;
+   return Object.fromEntries(
+      Object.entries(item).filter(([key]) => fields.includes(key))
+   ) as Partial<T>;
 }
 
 // Typed Express handler
@@ -80,11 +82,9 @@ export const listCreators: RequestHandler = async (req, res) => {
       warnIfUnrecognizedCreatorListSort(ctx.query, req.requestId);
 
       // Parse query using legacy schema
-      const parsed = parsePublicQuery(
-         LegacyCreatorQuerySchema,
-         ctx.query,
-         { debugContext: 'legacy-creator-list-query' }
-      );
+      const parsed = parsePublicQuery(LegacyCreatorQuerySchema, ctx.query, {
+         debugContext: 'legacy-creator-list-query',
+      });
 
       if (!parsed.ok) {
          return sendValidationError(
@@ -125,7 +125,7 @@ export const listCreators: RequestHandler = async (req, res) => {
       const response = wrapPublicCreatorListResponse(creators, meta);
       attachTimestampHeader(res);
       const filteredItems = Array.isArray(response.items)
-         ? response.items.map((item) =>
+         ? response.items.map(item =>
               pickFields(item as Record<string, unknown>, selectedFields)
            )
          : response.items;
@@ -149,6 +149,11 @@ export const listCreators: RequestHandler = async (req, res) => {
          },
          'Error listing creators'
       );
-      return sendError(res, 500, ErrorCode.INTERNAL_ERROR, 'Failed to retrieve creators');
+      return sendError(
+         res,
+         500,
+         ErrorCode.INTERNAL_ERROR,
+         'Failed to retrieve creators'
+      );
    }
 };

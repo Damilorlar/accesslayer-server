@@ -1,5 +1,9 @@
 import { strict as assert } from 'assert';
-import { withRpcTimeout, RpcTimeoutError, DEFAULT_RPC_TIMEOUT_MS } from './rpc-timeout.utils';
+import {
+   withRpcTimeout,
+   RpcTimeoutError,
+   DEFAULT_RPC_TIMEOUT_MS,
+} from './rpc-timeout.utils';
 
 async function run() {
    // resolves before timeout
@@ -11,7 +15,7 @@ async function run() {
       () =>
          withRpcTimeout(
             'slow',
-            () => new Promise((resolve) => setTimeout(resolve, 200)),
+            () => new Promise(resolve => setTimeout(resolve, 200)),
             50
          ),
       (err: unknown) => {
@@ -26,7 +30,8 @@ async function run() {
 
    // propagates non-timeout rejections unchanged
    await assert.rejects(
-      () => withRpcTimeout('fail', () => Promise.reject(new Error('boom')), 100),
+      () =>
+         withRpcTimeout('fail', () => Promise.reject(new Error('boom')), 100),
       (err: unknown) => {
          assert.ok(err instanceof Error);
          assert.equal((err as Error).message, 'boom');
@@ -40,7 +45,7 @@ async function run() {
    console.log('rpc-timeout.utils tests passed');
 }
 
-run().catch((err) => {
+run().catch(err => {
    console.error(err);
    process.exit(1);
 });

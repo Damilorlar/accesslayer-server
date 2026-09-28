@@ -9,9 +9,9 @@
  * Returns negative, zero, or positive — compatible with Array.prototype.sort.
  */
 function compareStrings(a: string, b: string): number {
-  if (a < b) return -1;
-  if (a > b) return 1;
-  return 0;
+   if (a < b) return -1;
+   if (a > b) return 1;
+   return 0;
 }
 
 /**
@@ -31,26 +31,26 @@ function compareStrings(a: string, b: string): number {
  * // Items with equal followers are ordered by id ascending — stable across pages.
  */
 export function withTieBreaker<T extends { id: string }>(
-  primaryKey: keyof T,
-  direction: 'asc' | 'desc' = 'asc',
+   primaryKey: keyof T,
+   direction: 'asc' | 'desc' = 'asc'
 ): (a: T, b: T) => number {
-  return (a: T, b: T): number => {
-    const av = a[primaryKey];
-    const bv = b[primaryKey];
+   return (a: T, b: T): number => {
+      const av = a[primaryKey];
+      const bv = b[primaryKey];
 
-    let primary: number;
+      let primary: number;
 
-    if (typeof av === 'number' && typeof bv === 'number') {
-      primary = av - bv;
-    } else {
-      primary = compareStrings(String(av ?? ''), String(bv ?? ''));
-    }
+      if (typeof av === 'number' && typeof bv === 'number') {
+         primary = av - bv;
+      } else {
+         primary = compareStrings(String(av ?? ''), String(bv ?? ''));
+      }
 
-    if (direction === 'desc') primary = -primary;
+      if (direction === 'desc') primary = -primary;
 
-    // Tie-break on `id` (always ascending) for deterministic order
-    return primary !== 0 ? primary : compareStrings(a.id, b.id);
-  };
+      // Tie-break on `id` (always ascending) for deterministic order
+      return primary !== 0 ? primary : compareStrings(a.id, b.id);
+   };
 }
 
 /**
@@ -62,9 +62,9 @@ export function withTieBreaker<T extends { id: string }>(
  * @param direction - Sort direction for the primary key
  */
 export function stableSortCreators<T extends { id: string }>(
-  items: T[],
-  key: keyof T,
-  direction: 'asc' | 'desc' = 'asc',
+   items: T[],
+   key: keyof T,
+   direction: 'asc' | 'desc' = 'asc'
 ): T[] {
-  return [...items].sort(withTieBreaker(key, direction));
+   return [...items].sort(withTieBreaker(key, direction));
 }

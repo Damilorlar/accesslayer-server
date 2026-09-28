@@ -79,20 +79,23 @@ export function safeBooleanQueryParam(options: {
 }) {
    const { paramName, defaultValue } = options;
 
-   return z.any().optional().transform((raw, ctx) => {
-      try {
-         const parsed = parseBoolean(paramName, raw);
-         return parsed === null ? defaultValue : parsed;
-      } catch (error) {
-         if (error instanceof ParseBooleanError) {
-            ctx.addIssue({
-               code: z.ZodIssueCode.custom,
-               message: error.message,
-            });
-            return z.NEVER;
-         }
+   return z
+      .any()
+      .optional()
+      .transform((raw, ctx) => {
+         try {
+            const parsed = parseBoolean(paramName, raw);
+            return parsed === null ? defaultValue : parsed;
+         } catch (error) {
+            if (error instanceof ParseBooleanError) {
+               ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: error.message,
+               });
+               return z.NEVER;
+            }
 
-         throw error;
-      }
-   });
+            throw error;
+         }
+      });
 }

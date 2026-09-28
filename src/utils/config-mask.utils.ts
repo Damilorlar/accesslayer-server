@@ -16,48 +16,43 @@ import { envConfig } from '../config';
  * - `TOKEN`   — reserved for future token-based config values
  * - `DATABASE_URL` — contains embedded credentials (user:password@host)
  */
-const SENSITIVE_KEY_PATTERNS = [
-  /SECRET/i,
-  /KEY/i,
-  /PASSWORD/i,
-  /TOKEN/i,
-];
+const SENSITIVE_KEY_PATTERNS = [/SECRET/i, /KEY/i, /PASSWORD/i, /TOKEN/i];
 
 const SENSITIVE_EXACT_KEYS = ['DATABASE_URL'];
 
 function isKeySensitive(key: string): boolean {
-  if (SENSITIVE_EXACT_KEYS.includes(key)) return true;
-  return SENSITIVE_KEY_PATTERNS.some((pattern) => pattern.test(key));
+   if (SENSITIVE_EXACT_KEYS.includes(key)) return true;
+   return SENSITIVE_KEY_PATTERNS.some(pattern => pattern.test(key));
 }
 
 function maskDatabaseUrl(url: string): string {
-  try {
-    const parsed = new URL(url);
-    if (parsed.password) {
-      parsed.password = '***';
-    }
-    if (parsed.username) {
-      parsed.username = parsed.username ? '***' : '';
-    }
-    return parsed.toString();
-  } catch {
-    return '***';
-  }
+   try {
+      const parsed = new URL(url);
+      if (parsed.password) {
+         parsed.password = '***';
+      }
+      if (parsed.username) {
+         parsed.username = parsed.username ? '***' : '';
+      }
+      return parsed.toString();
+   } catch {
+      return '***';
+   }
 }
 
 function maskValue(key: string, value: unknown): unknown {
-  if (!isKeySensitive(key)) return value;
+   if (!isKeySensitive(key)) return value;
 
-  if (typeof value === 'string') {
-    if (key === 'DATABASE_URL') {
-      return maskDatabaseUrl(value);
-    }
-    if (value.length > 8) {
-      return value.slice(0, 4) + '***' + value.slice(-4);
-    }
-  }
+   if (typeof value === 'string') {
+      if (key === 'DATABASE_URL') {
+         return maskDatabaseUrl(value);
+      }
+      if (value.length > 8) {
+         return value.slice(0, 4) + '***' + value.slice(-4);
+      }
+   }
 
-  return '***';
+   return '***';
 }
 
 /**
@@ -74,11 +69,11 @@ function maskValue(key: string, value: unknown): unknown {
  * logger.info(maskSensitiveConfigValues(), 'Startup configuration summary');
  */
 export function maskSensitiveConfigValues(): Record<string, unknown> {
-  const masked: Record<string, unknown> = {};
+   const masked: Record<string, unknown> = {};
 
-  for (const [key, value] of Object.entries(envConfig)) {
-    masked[key] = maskValue(key, value);
-  }
+   for (const [key, value] of Object.entries(envConfig)) {
+      masked[key] = maskValue(key, value);
+   }
 
-  return masked;
+   return masked;
 }

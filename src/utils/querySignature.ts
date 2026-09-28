@@ -24,7 +24,9 @@ const SENSITIVE_FIELD_PATTERNS = [
  */
 function isSensitiveField(fieldName: string): boolean {
    const lowerField = fieldName.toLowerCase();
-   return SENSITIVE_FIELD_PATTERNS.some(pattern => lowerField.includes(pattern));
+   return SENSITIVE_FIELD_PATTERNS.some(pattern =>
+      lowerField.includes(pattern)
+   );
 }
 
 /**
@@ -49,13 +51,17 @@ function isSensitiveField(fieldName: string): boolean {
  */
 export function buildQuerySignature(query: Record<string, unknown>): string {
    // Filter out sensitive fields
-   const safeEntries = Object.entries(query).filter(([key]) => !isSensitiveField(key));
+   const safeEntries = Object.entries(query).filter(
+      ([key]) => !isSensitiveField(key)
+   );
 
    // Sort keys alphabetically for deterministic ordering
    safeEntries.sort(([a], [b]) => a.localeCompare(b));
 
    // Create a normalized string representation
-   const normalized = safeEntries.map(([key, value]) => `${key}:${JSON.stringify(value)}`).join('|');
+   const normalized = safeEntries
+      .map(([key, value]) => `${key}:${JSON.stringify(value)}`)
+      .join('|');
 
    // Generate SHA-256 hash
    return createHash('sha256').update(normalized).digest('hex');

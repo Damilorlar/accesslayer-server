@@ -1,4 +1,8 @@
-import { generateSlug, generateSlugWithSuffix, resolveSlugCollision } from '../slug.utils';
+import {
+   generateSlug,
+   generateSlugWithSuffix,
+   resolveSlugCollision,
+} from '../slug.utils';
 
 describe('slug.utils', () => {
    describe('generateSlug', () => {
@@ -65,7 +69,9 @@ describe('slug.utils', () => {
 
       it('should throw error if limit is reached', async () => {
          const isUnique = jest.fn().mockResolvedValue(false);
-         await expect(resolveSlugCollision('John Doe', isUnique)).rejects.toThrow(
+         await expect(
+            resolveSlugCollision('John Doe', isUnique)
+         ).rejects.toThrow(
             'Failed to resolve slug collision for "John Doe" after 1000 attempts.'
          );
       });

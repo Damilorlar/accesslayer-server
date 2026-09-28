@@ -21,11 +21,11 @@
  * normalizeCreatorHandle('Jazz__King')    // 'jazz__king' → 'jazz_king'
  */
 export function normalizeCreatorHandle(handle: string): string {
-    return handle
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, '_') // internal spaces → underscore
-        .replace(/[^a-z0-9_-]/g, '') // strip unsupported characters
-        .replace(/-{2,}/g, '-') // collapse consecutive hyphens
-        .replace(/_{2,}/g, '_'); // collapse consecutive underscores
+   return handle
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '_') // internal spaces → underscore
+      .replace(/[^a-z0-9_-]/g, '') // strip unsupported characters
+      .replace(/-{2,}/g, '-') // collapse consecutive hyphens
+      .replace(/_{2,}/g, '_'); // collapse consecutive underscores
 }

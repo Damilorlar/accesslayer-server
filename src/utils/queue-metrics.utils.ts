@@ -15,31 +15,35 @@
 export type QueueState = 'pending' | 'processing' | 'failed' | 'dlq';
 
 export interface QueueDepthEntry {
-  queue: string;
-  state: QueueState;
-  depth: number;
-  updatedAt: string;
+   queue: string;
+   state: QueueState;
+   depth: number;
+   updatedAt: string;
 }
 
 const registry = new Map<string, QueueDepthEntry>();
 
 function key(queue: string, state: QueueState): string {
-  return `${queue}:${state}`;
+   return `${queue}:${state}`;
 }
 
-export function setQueueDepth(queue: string, state: QueueState, depth: number): void {
-  registry.set(key(queue, state), {
-    queue,
-    state,
-    depth,
-    updatedAt: new Date().toISOString(),
-  });
+export function setQueueDepth(
+   queue: string,
+   state: QueueState,
+   depth: number
+): void {
+   registry.set(key(queue, state), {
+      queue,
+      state,
+      depth,
+      updatedAt: new Date().toISOString(),
+   });
 }
 
 export function getQueueDepths(): QueueDepthEntry[] {
-  return Array.from(registry.values());
+   return Array.from(registry.values());
 }
 
 export function resetQueueMetrics(): void {
-  registry.clear();
+   registry.clear();
 }

@@ -14,7 +14,7 @@ function buildOffsetUrl(
    baseUrl: string,
    query: Record<string, string | number | boolean | undefined>,
    offset: number,
-   limit: number,
+   limit: number
 ): string {
    const params = new URLSearchParams();
    for (const [key, value] of Object.entries(query)) {
@@ -43,14 +43,21 @@ function buildOffsetUrl(
  * buildPaginationLinkHeader({ baseUrl: 'https://api.example.com/creators', query: {}, offset: 10, limit: 10, total: 25 })
  * // => '<https://...?offset=20&limit=10>; rel="next", <https://...?offset=0&limit=10>; rel="prev"'
  */
-export function buildPaginationLinkHeader(params: PaginationLinkParams): string | null {
+export function buildPaginationLinkHeader(
+   params: PaginationLinkParams
+): string | null {
    const { baseUrl, query, offset, limit, total } = params;
    const safeOffset = Math.max(0, offset);
    const safeLimit = Math.max(1, limit);
    const links: string[] = [];
 
    if (safeOffset + safeLimit < total) {
-      const nextUrl = buildOffsetUrl(baseUrl, query, safeOffset + safeLimit, safeLimit);
+      const nextUrl = buildOffsetUrl(
+         baseUrl,
+         query,
+         safeOffset + safeLimit,
+         safeLimit
+      );
       links.push(`<${nextUrl}>; rel="next"`);
    }
 
@@ -73,7 +80,10 @@ export function buildPaginationLinkHeader(params: PaginationLinkParams): string 
  * @param res - Express response object
  * @param params - Pagination context
  */
-export function attachPaginationLinkHeaders(res: Response, params: PaginationLinkParams): void {
+export function attachPaginationLinkHeaders(
+   res: Response,
+   params: PaginationLinkParams
+): void {
    const header = buildPaginationLinkHeader(params);
    if (header !== null) {
       res.set(PAGINATION_LINK_HEADER, header);

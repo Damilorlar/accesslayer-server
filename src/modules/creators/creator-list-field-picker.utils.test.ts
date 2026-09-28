@@ -57,7 +57,9 @@ describe('pickCreatorListFields()', () => {
       for (const field of CREATOR_LIST_PUBLIC_FIELDS) {
          expect(picked).toHaveProperty(field);
       }
-      expect(Object.keys(picked)).toHaveLength(CREATOR_LIST_PUBLIC_FIELDS.length);
+      expect(Object.keys(picked)).toHaveLength(
+         CREATOR_LIST_PUBLIC_FIELDS.length
+      );
    });
 
    it('returns only the requested subset', () => {
@@ -75,14 +77,21 @@ describe('pickCreatorListFields()', () => {
          price24hAgo: null,
          priceChange24h: null,
       };
-      const picked = pickCreatorListFields(nullItem, ['currentPrice', 'price24hAgo', 'priceChange24h']);
+      const picked = pickCreatorListFields(nullItem, [
+         'currentPrice',
+         'price24hAgo',
+         'priceChange24h',
+      ]);
       expect(picked.currentPrice).toBeNull();
       expect(picked.price24hAgo).toBeNull();
       expect(picked.priceChange24h).toBeNull();
    });
 
    it('preserves exact field values', () => {
-      const picked = pickCreatorListFields(sampleItem, ['followers', 'priceChange24h']);
+      const picked = pickCreatorListFields(sampleItem, [
+         'followers',
+         'priceChange24h',
+      ]);
       expect(picked.followers).toBe(42);
       expect(picked.priceChange24h).toBe(11.11);
    });

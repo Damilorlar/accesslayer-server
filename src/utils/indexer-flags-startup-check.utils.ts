@@ -35,9 +35,7 @@ export class IndexerFlagsConfigError extends Error {
  * issues — operators see every problem at once instead of fixing them one
  * boot at a time.
  */
-export function validateIndexerFeatureFlags(
-   config: IndexerFlagsConfig
-): void {
+export function validateIndexerFeatureFlags(config: IndexerFlagsConfig): void {
    const issues: string[] = [];
 
    if (
@@ -68,10 +66,7 @@ export function validateIndexerFeatureFlags(
       );
    }
 
-   if (
-      !config.ENABLE_INDEXER_DEDUPE &&
-      config.ENABLE_INDEXER_DLQ
-   ) {
+   if (!config.ENABLE_INDEXER_DEDUPE && config.ENABLE_INDEXER_DLQ) {
       issues.push(
          'ENABLE_INDEXER_DLQ is on but ENABLE_INDEXER_DEDUPE is off — the DLQ relies on dedupe to identify duplicate failures, enable both or neither'
       );
@@ -105,8 +100,7 @@ export function runIndexerFeatureFlagsStartupCheck(): void {
          enableDlq: envConfig.ENABLE_INDEXER_DLQ,
          enableStalenessWarning:
             envConfig.ENABLE_INDEXER_CURSOR_STALENESS_WARNING,
-         cursorStaleAgeWarningMs:
-            envConfig.INDEXER_CURSOR_STALE_AGE_WARNING_MS,
+         cursorStaleAgeWarningMs: envConfig.INDEXER_CURSOR_STALE_AGE_WARNING_MS,
          jitterFactor: envConfig.INDEXER_JITTER_FACTOR,
       },
       'Indexer feature flags validated'

@@ -29,23 +29,23 @@
  * parseCommaQuery(undefined)        // []
  */
 export function parseCommaQuery(
-  raw: string | string[] | undefined | null
+   raw: string | string[] | undefined | null
 ): string[] {
-  if (raw == null) return [];
+   if (raw == null) return [];
 
-  const joined = Array.isArray(raw) ? raw.join(',') : raw;
+   const joined = Array.isArray(raw) ? raw.join(',') : raw;
 
-  const seen = new Set<string>();
-  const result: string[] = [];
+   const seen = new Set<string>();
+   const result: string[] = [];
 
-  for (const token of joined.split(',')) {
-    const trimmed = token.trim();
-    if (trimmed === '') continue;
-    if (!seen.has(trimmed)) {
-      seen.add(trimmed);
-      result.push(trimmed);
-    }
-  }
+   for (const token of joined.split(',')) {
+      const trimmed = token.trim();
+      if (trimmed === '') continue;
+      if (!seen.has(trimmed)) {
+         seen.add(trimmed);
+         result.push(trimmed);
+      }
+   }
 
-  return result;
+   return result;
 }

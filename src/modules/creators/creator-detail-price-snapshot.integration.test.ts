@@ -23,7 +23,7 @@ describe('#504 creator detail endpoint — current_price from price snapshot', (
       });
 
       const creator = await prisma.creatorProfile.upsert({
-         where: { userId: USER_ID },
+         where: { handle: HANDLE },
          create: {
             userId: USER_ID,
             handle: HANDLE,
@@ -43,7 +43,9 @@ describe('#504 creator detail endpoint — current_price from price snapshot', (
    });
 
    it('creator detail returns null current_price before any snapshot exists', async () => {
-      const res = await supertest(app).get(`/api/v1/creators/${creatorId}/profile`);
+      const res = await supertest(app).get(
+         `/api/v1/creators/${creatorId}/profile`
+      );
       expect(res.status).toBe(200);
       expect(res.body.data.currentPrice).toBeNull();
       expect(res.body.data.priceChange24h).toBeNull();
@@ -57,7 +59,9 @@ describe('#504 creator detail endpoint — current_price from price snapshot', (
          tradeAt: new Date(),
       });
 
-      const res = await supertest(app).get(`/api/v1/creators/${creatorId}/profile`);
+      const res = await supertest(app).get(
+         `/api/v1/creators/${creatorId}/profile`
+      );
       expect(res.status).toBe(200);
       expect(res.body.data.currentPrice).toBe('1500000');
    });
@@ -70,7 +74,9 @@ describe('#504 creator detail endpoint — current_price from price snapshot', (
          tradeAt: new Date(),
       });
 
-      const beforeRes = await supertest(app).get(`/api/v1/creators/${creatorId}/profile`);
+      const beforeRes = await supertest(app).get(
+         `/api/v1/creators/${creatorId}/profile`
+      );
       expect(beforeRes.status).toBe(200);
       expect(beforeRes.body.data.currentPrice).toBe('2000000');
 
@@ -81,10 +87,14 @@ describe('#504 creator detail endpoint — current_price from price snapshot', (
          tradeAt: new Date(),
       });
 
-      const afterRes = await supertest(app).get(`/api/v1/creators/${creatorId}/profile`);
+      const afterRes = await supertest(app).get(
+         `/api/v1/creators/${creatorId}/profile`
+      );
       expect(afterRes.status).toBe(200);
       expect(afterRes.body.data.currentPrice).toBe('3750000');
-      expect(afterRes.body.data.currentPrice).not.toBe(beforeRes.body.data.currentPrice);
+      expect(afterRes.body.data.currentPrice).not.toBe(
+         beforeRes.body.data.currentPrice
+      );
    });
 
    it('creator list includes current_price matching snapshot value', async () => {

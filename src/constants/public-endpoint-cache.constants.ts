@@ -23,4 +23,3 @@ export const PUBLIC_ENDPOINT_CACHE_PRESETS = {
       type: 'public' as const,
    },
 } as const;
-

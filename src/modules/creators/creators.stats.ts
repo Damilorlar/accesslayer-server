@@ -8,10 +8,11 @@ import { CreatorMetrics } from '../../types/profile.types';
  * Single source of truth for what gets included in public stats responses.
  */
 export const CREATOR_STATS_FIELDS = [
-    'holderCount',
-    'totalSupply',
-    'totalVolume',
-    'lastActivityAt',
+   'holderCount',
+   'totalSupply',
+   'totalVolume',
+   'currentPrice',
+   'lastActivityAt',
 ] as const;
 
 export type CreatorStatsField = (typeof CREATOR_STATS_FIELDS)[number];
@@ -23,10 +24,13 @@ export type CreatorStatsField = (typeof CREATOR_STATS_FIELDS)[number];
  * Avoids leaking internal or sensitive metric fields.
  */
 export interface PublicCreatorStats {
-    holderCount: number;
-    totalSupply: number;
-    totalVolume: number;
-    lastActivityAt?: Date;
+   holderCount: number;
+   holder_count: number;
+   totalSupply: number;
+   totalVolume: number;
+   /** Current key price in stroops as a string; null when no trade has occurred. */
+   currentPrice?: string | null;
+   lastActivityAt?: Date;
 }
 
 /**
@@ -38,10 +42,11 @@ export interface PublicCreatorStats {
  * while enforcing that all public fields map to valid CreatorMetrics keys.
  */
 const CREATOR_STATS_FIELD_MAP = {
-    holderCount: 'holderCount',
-    totalSupply: 'totalSupply',
-    totalVolume: 'totalVolume',
-    lastActivityAt: 'lastActivityAt',
+   holderCount: 'holderCount',
+   totalSupply: 'totalSupply',
+   totalVolume: 'totalVolume',
+   currentPrice: 'currentPrice',
+   lastActivityAt: 'lastActivityAt',
 } as const satisfies Record<CreatorStatsField, keyof CreatorMetrics>;
 
 /**
@@ -55,20 +60,22 @@ const CREATOR_STATS_FIELD_MAP = {
  *
  * @example
  * mapPublicCreatorStats({ holderCount: 10, totalSupply: 100, totalVolume: 500 })
- * // => { holderCount: 10, totalSupply: 100, totalVolume: 500 }
+ * // => { holderCount: 10, holder_count: 10, totalSupply: 100, totalVolume: 500, currentPrice: null }
  */
 export function mapPublicCreatorStats(
-    metrics: CreatorMetrics
+   metrics: CreatorMetrics
 ): PublicCreatorStats {
-    return {
-        holderCount: metrics[CREATOR_STATS_FIELD_MAP.holderCount],
-        totalSupply: metrics[CREATOR_STATS_FIELD_MAP.totalSupply],
-        totalVolume: metrics[CREATOR_STATS_FIELD_MAP.totalVolume],
-        ...(metrics[CREATOR_STATS_FIELD_MAP.lastActivityAt] !== undefined
-            ? {
-                  lastActivityAt:
-                      metrics[CREATOR_STATS_FIELD_MAP.lastActivityAt],
-              }
-            : {}),
-    };
+   const count = metrics[CREATOR_STATS_FIELD_MAP.holderCount];
+   return {
+      holderCount: count,
+      holder_count: count,
+      totalSupply: metrics[CREATOR_STATS_FIELD_MAP.totalSupply],
+      totalVolume: metrics[CREATOR_STATS_FIELD_MAP.totalVolume],
+      currentPrice: metrics[CREATOR_STATS_FIELD_MAP.currentPrice] ?? null,
+      ...(metrics[CREATOR_STATS_FIELD_MAP.lastActivityAt] !== undefined
+         ? {
+              lastActivityAt: metrics[CREATOR_STATS_FIELD_MAP.lastActivityAt],
+           }
+         : {}),
+   };
 }

@@ -64,10 +64,9 @@ describe('GET /api/v1/creators — page size boundary', () => {
    // ── Exactly at MAX_PAGE_SIZE ───────────────────────────────────────────────
 
    it('accepts limit equal to MAX_PAGE_SIZE and returns HTTP 200', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         makeFixtures(MAX_PAGE_SIZE),
-         MAX_PAGE_SIZE,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([makeFixtures(MAX_PAGE_SIZE), MAX_PAGE_SIZE]);
 
       const req = makeReq({ limit: String(MAX_PAGE_SIZE) });
       const res = makeRes();
@@ -92,10 +91,9 @@ describe('GET /api/v1/creators — page size boundary', () => {
 
    it('response contains no more than MAX_PAGE_SIZE items when limit=MAX_PAGE_SIZE', async () => {
       const fixtures = makeFixtures(MAX_PAGE_SIZE);
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         fixtures,
-         MAX_PAGE_SIZE,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([fixtures, MAX_PAGE_SIZE]);
 
       const req = makeReq({ limit: String(MAX_PAGE_SIZE) });
       const res = makeRes();
@@ -106,10 +104,9 @@ describe('GET /api/v1/creators — page size boundary', () => {
    });
 
    it('pagination meta reflects limit=MAX_PAGE_SIZE in the response', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         makeFixtures(MAX_PAGE_SIZE),
-         MAX_PAGE_SIZE,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([makeFixtures(MAX_PAGE_SIZE), MAX_PAGE_SIZE]);
 
       const req = makeReq({ limit: String(MAX_PAGE_SIZE) });
       const res = makeRes();
@@ -122,10 +119,9 @@ describe('GET /api/v1/creators — page size boundary', () => {
    });
 
    it('response envelope is well-formed at the limit boundary', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         makeFixtures(3),
-         3,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([makeFixtures(3), 3]);
 
       const req = makeReq({ limit: String(MAX_PAGE_SIZE) });
       const res = makeRes();
@@ -200,10 +196,9 @@ describe('GET /api/v1/creators — page size boundary', () => {
 
    it('accepts limit one below MAX_PAGE_SIZE (MAX_PAGE_SIZE - 1) with HTTP 200', async () => {
       const belowMax = MAX_PAGE_SIZE - 1;
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         makeFixtures(belowMax),
-         belowMax,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([makeFixtures(belowMax), belowMax]);
 
       const req = makeReq({ limit: String(belowMax) });
       const res = makeRes();
@@ -218,10 +213,9 @@ describe('GET /api/v1/creators — page size boundary', () => {
    // ── MIN_PAGE_SIZE boundary ────────────────────────────────────────────────
 
    it('accepts limit equal to MIN_PAGE_SIZE with HTTP 200', async () => {
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([
-         makeFixtures(1),
-         1,
-      ]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([makeFixtures(1), 1]);
 
       const req = makeReq({ limit: String(MIN_PAGE_SIZE) });
       const res = makeRes();

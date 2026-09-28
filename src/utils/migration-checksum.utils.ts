@@ -6,37 +6,50 @@ import { logger } from './logger.utils';
 
 /**
  * Verifies that the local migration files match the checksums recorded in the database.
- * 
+ *
  * This helps detect "migration drift" or accidental modifications to historical
  * migration files which could lead to inconsistent environments.
- * 
+ *
  * @throws {Error} If a checksum mismatch is detected or if migrations are missing.
  */
 export async function verifyMigrationChecksums(): Promise<void> {
-   const migrationsPath = path.resolve(process.cwd(), 'prisma', 'schema', 'migrations');
+   const migrationsPath = path.resolve(
+      process.cwd(),
+      'prisma',
+      'schema',
+      'migrations'
+   );
 
    if (!fs.existsSync(migrationsPath)) {
-      logger.warn('Migrations directory not found, skipping checksum verification.');
+      logger.warn(
+         'Migrations directory not found, skipping checksum verification.'
+      );
       return;
    }
 
    // 1. Check if the migrations table exists
    try {
-      await prisma.$queryRawUnsafe(`SELECT 1 FROM "_prisma_migrations" LIMIT 1`);
+      await prisma.$queryRawUnsafe(
+         `SELECT 1 FROM "_prisma_migrations" LIMIT 1`
+      );
    } catch (_error) {
-      logger.info('Prisma migrations table not found. Skipping verification (fresh database).');
+      logger.info(
+         'Prisma migrations table not found. Skipping verification (fresh database).'
+      );
       return;
    }
 
    // 2. Read local migrations
    const entries = fs.readdirSync(migrationsPath, { withFileTypes: true });
    const migrationDirs = entries
-      .filter((entry) => entry.isDirectory() && /^\d+_/.test(entry.name))
-      .map((entry) => entry.name)
+      .filter(entry => entry.isDirectory() && /^\d+_/.test(entry.name))
+      .map(entry => entry.name)
       .sort();
 
    if (migrationDirs.length === 0) {
-      logger.warn('No migration directories found in prisma/schema/migrations.');
+      logger.warn(
+         'No migration directories found in prisma/schema/migrations.'
+      );
       return;
    }
 
@@ -53,7 +66,7 @@ export async function verifyMigrationChecksums(): Promise<void> {
    // 4. Compare
    for (const migrationName of migrationDirs) {
       const dbChecksum = dbChecksumMap.get(migrationName);
-      
+
       // If the migration hasn't been applied yet, we skip it (it's a new migration)
       if (!dbChecksum) {
          continue;
@@ -65,7 +78,7 @@ export async function verifyMigrationChecksums(): Promise<void> {
       }
 
       const sqlContent = fs.readFileSync(sqlPath, 'utf8');
-      
+
       // Prisma normalizes line endings to LF before hashing
       const normalizedContent = sqlContent.replace(/\r\n/g, '\n');
       const localChecksum = crypto
@@ -88,5 +101,7 @@ To fix this:
       }
    }
 
-   logger.info(`Verified checksums for ${dbChecksumMap.size} migrations. All match.`);
+   logger.info(
+      `Verified checksums for ${dbChecksumMap.size} migrations. All match.`
+   );
 }

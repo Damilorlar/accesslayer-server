@@ -1,4 +1,8 @@
-import { formatIsoTimestamp, parseISOTimestamp, InvalidTimestamp } from './iso-timestamp.utils';
+import {
+   formatIsoTimestamp,
+   parseISOTimestamp,
+   InvalidTimestamp,
+} from './iso-timestamp.utils';
 
 describe('formatIsoTimestamp()', () => {
    it('formats supported timestamp inputs with one ISO 8601 UTC representation', () => {
@@ -66,7 +70,9 @@ describe('parseISOTimestamp()', () => {
 
    // Acceptance criterion: Unix timestamp string throws InvalidTimestamp
    it('throws InvalidTimestamp for a Unix timestamp string', () => {
-      expect(() => parseISOTimestamp('1704153845000')).toThrow(InvalidTimestamp);
+      expect(() => parseISOTimestamp('1704153845000')).toThrow(
+         InvalidTimestamp
+      );
    });
 
    it('throws InvalidTimestamp for a bare date string (no time component)', () => {

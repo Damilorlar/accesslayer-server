@@ -170,7 +170,9 @@ describe('Indexer Heartbeat Controllers', () => {
 
          await recordIndexerHeartbeat(req, res);
 
-         expect(checkCursorStalenessMock).toHaveBeenCalledWith({ job: 'indexer' });
+         expect(checkCursorStalenessMock).toHaveBeenCalledWith({
+            job: 'indexer',
+         });
       });
    });
 });
@@ -210,7 +212,9 @@ describe('Readiness Controller', () => {
 
          await readinessCheck({} as Request, res);
 
-         const dbCheck = res.body.checks.find((c: any) => c.name === 'database');
+         const dbCheck = res.body.checks.find(
+            (c: any) => c.name === 'database'
+         );
          expect(dbCheck.status).toBe('ok');
          expect(typeof dbCheck.latencyMs).toBe('number');
          expect(typeof res.body.latencyMs).toBe('number');

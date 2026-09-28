@@ -1,4 +1,7 @@
-import { sanitizeLogFieldValue, sanitizeLogObject } from './log-field-sanitizer.utils';
+import {
+   sanitizeLogFieldValue,
+   sanitizeLogObject,
+} from './log-field-sanitizer.utils';
 import { logger } from './logger.utils';
 
 export interface IndexerRetryExhaustionContext {
@@ -18,13 +21,19 @@ export interface IndexerRetryExhaustionContext {
  *
  * @param ctx - Job identity and context metadata
  */
-export function logIndexerRetryExhaustion(ctx: IndexerRetryExhaustionContext): void {
+export function logIndexerRetryExhaustion(
+   ctx: IndexerRetryExhaustionContext
+): void {
    logger.error({
       msg: 'Indexer job retry limit exhausted',
       jobId: sanitizeLogFieldValue(ctx.jobId),
       jobType: sanitizeLogFieldValue(ctx.jobType),
       retryCount: ctx.retryCount,
-      ...(ctx.lastError !== undefined && { lastError: sanitizeLogFieldValue(ctx.lastError) }),
-      ...(ctx.payload !== undefined && { payload: sanitizeLogObject(ctx.payload) }),
+      ...(ctx.lastError !== undefined && {
+         lastError: sanitizeLogFieldValue(ctx.lastError),
+      }),
+      ...(ctx.payload !== undefined && {
+         payload: sanitizeLogObject(ctx.payload),
+      }),
    });
 }

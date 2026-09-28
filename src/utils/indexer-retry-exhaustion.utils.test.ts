@@ -12,14 +12,18 @@ describe('logIndexerRetryExhaustion()', () => {
    });
 
    it('logs an error with required context fields', () => {
-      logIndexerRetryExhaustion({ jobId: 'job-1', jobType: 'sync', retryCount: 5 });
+      logIndexerRetryExhaustion({
+         jobId: 'job-1',
+         jobType: 'sync',
+         retryCount: 5,
+      });
       expect(logger.error).toHaveBeenCalledWith(
          expect.objectContaining({
             msg: 'Indexer job retry limit exhausted',
             jobId: 'job-1',
             jobType: 'sync',
             retryCount: 5,
-         }),
+         })
       );
    });
 
@@ -31,12 +35,16 @@ describe('logIndexerRetryExhaustion()', () => {
          lastError: 'Connection timeout',
       });
       expect(logger.error).toHaveBeenCalledWith(
-         expect.objectContaining({ lastError: 'Connection timeout' }),
+         expect.objectContaining({ lastError: 'Connection timeout' })
       );
    });
 
    it('omits lastError when not provided', () => {
-      logIndexerRetryExhaustion({ jobId: 'job-3', jobType: 'ingest', retryCount: 3 });
+      logIndexerRetryExhaustion({
+         jobId: 'job-3',
+         jobType: 'ingest',
+         retryCount: 3,
+      });
       const call = (logger.error as jest.Mock).mock.calls[0][0];
       expect(call).not.toHaveProperty('lastError');
    });
@@ -75,7 +83,11 @@ describe('logIndexerRetryExhaustion()', () => {
    });
 
    it('omits payload when not provided', () => {
-      logIndexerRetryExhaustion({ jobId: 'job-6', jobType: 'sync', retryCount: 1 });
+      logIndexerRetryExhaustion({
+         jobId: 'job-6',
+         jobType: 'sync',
+         retryCount: 1,
+      });
       const call = (logger.error as jest.Mock).mock.calls[0][0];
       expect(call).not.toHaveProperty('payload');
    });

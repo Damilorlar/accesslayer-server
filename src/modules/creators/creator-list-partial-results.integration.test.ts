@@ -68,7 +68,7 @@ describe('GET /api/v1/creators — partial database results', () => {
 
       const body = res.json.mock.calls[0][0];
       const meta = body.data.meta;
-      
+
       expect(meta.limit).toBe(20);
       expect(meta.total).toBe(50);
       // hasMore = (offset + limit) < total => (0 + 20) < 50 => true

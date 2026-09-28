@@ -5,7 +5,10 @@ import { prisma } from '../../utils/prisma.utils';
 import { encodeCursor } from '../../utils/cursor.utils';
 import { CreatorProfile } from '../../types/profile.types';
 
-function makeReq(query: Record<string, any> = {}, path = '/api/v1/creators'): any {
+function makeReq(
+   query: Record<string, any> = {},
+   path = '/api/v1/creators'
+): any {
    return {
       query,
       path,
@@ -44,7 +47,9 @@ describe('Pagination Boundary Warnings - Out-of-range cursors', () => {
       warnSpy = jest.spyOn(logger, 'warn').mockImplementation(() => {});
 
       // Mock fetchCreatorList to return a default mock result
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockResolvedValue([[sampleProfile], 1]);
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockResolvedValue([[sampleProfile], 1]);
    });
 
    it('does not log a warning when no cursor is provided', async () => {
@@ -68,7 +73,9 @@ describe('Pagination Boundary Warnings - Out-of-range cursors', () => {
       });
 
       // Mock prisma.creatorProfile.findFirst to return the profile (exists)
-      jest.spyOn(prisma.creatorProfile, 'findFirst').mockResolvedValue(sampleProfile as any);
+      jest
+         .spyOn(prisma.creatorProfile, 'findFirst')
+         .mockResolvedValue(sampleProfile as any);
 
       const req = makeReq({ cursor: validCursor });
       const res = makeRes();

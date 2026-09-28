@@ -25,7 +25,7 @@ function makeRes(): any {
 }
 
 function makeNext(): jest.Mock {
-   return jest.fn((err) => {
+   return jest.fn(err => {
       if (err) {
          console.error('NEXT CALLED WITH ERROR:', err);
       }
@@ -35,14 +35,59 @@ function makeNext(): jest.Mock {
 // ── Mock Fixture Data with known split ────────────────────────────────────────
 
 const mockMatchingCreators = [
-   { id: '1', displayName: 'Gamer One', handle: 'gamer1', category: 'gaming', avatarUrl: 'http://avatar1.png', isVerified: true, createdAt: new Date(), updatedAt: new Date() },
-   { id: '2', displayName: 'Gamer Two', handle: 'gamer2', category: 'gaming', avatarUrl: 'http://avatar2.png', isVerified: true, createdAt: new Date(), updatedAt: new Date() },
-   { id: '3', displayName: 'Gamer Three', handle: 'gamer3', category: 'gaming', avatarUrl: 'http://avatar3.png', isVerified: true, createdAt: new Date(), updatedAt: new Date() },
+   {
+      id: '1',
+      displayName: 'Gamer One',
+      handle: 'gamer1',
+      category: 'gaming',
+      avatarUrl: 'http://avatar1.png',
+      isVerified: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+   },
+   {
+      id: '2',
+      displayName: 'Gamer Two',
+      handle: 'gamer2',
+      category: 'gaming',
+      avatarUrl: 'http://avatar2.png',
+      isVerified: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+   },
+   {
+      id: '3',
+      displayName: 'Gamer Three',
+      handle: 'gamer3',
+      category: 'gaming',
+      avatarUrl: 'http://avatar3.png',
+      isVerified: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+   },
 ] as unknown as CreatorProfile[];
 
 const mockNonMatchingCreators = [
-   { id: '4', displayName: 'Artist One', handle: 'artist1', category: 'art', avatarUrl: 'http://avatar4.png', isVerified: false, createdAt: new Date(), updatedAt: new Date() },
-   { id: '5', displayName: 'Musician One', handle: 'musician1', category: 'music', avatarUrl: 'http://avatar5.png', isVerified: false, createdAt: new Date(), updatedAt: new Date() },
+   {
+      id: '4',
+      displayName: 'Artist One',
+      handle: 'artist1',
+      category: 'art',
+      avatarUrl: 'http://avatar4.png',
+      isVerified: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+   },
+   {
+      id: '5',
+      displayName: 'Musician One',
+      handle: 'musician1',
+      category: 'music',
+      avatarUrl: 'http://avatar5.png',
+      isVerified: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+   },
 ] as unknown as CreatorProfile[];
 
 const mockAllCreators = [...mockMatchingCreators, ...mockNonMatchingCreators];
@@ -52,12 +97,14 @@ const mockAllCreators = [...mockMatchingCreators, ...mockNonMatchingCreators];
 describe('GET /api/v1/creators — total count accuracy after filter', () => {
    beforeEach(() => {
       // Mock fetchCreatorList implementation to return different totals depending on filter
-      jest.spyOn(creatorsUtils, 'fetchCreatorList').mockImplementation(async (query: any) => {
-         if (query.category === 'gaming') {
-            return [mockMatchingCreators, mockMatchingCreators.length]; // 3 creators
-         }
-         return [mockAllCreators, mockAllCreators.length]; // 5 creators
-      });
+      jest
+         .spyOn(creatorsUtils, 'fetchCreatorList')
+         .mockImplementation(async (query: any) => {
+            if (query.category === 'gaming') {
+               return [mockMatchingCreators, mockMatchingCreators.length]; // 3 creators
+            }
+            return [mockAllCreators, mockAllCreators.length]; // 5 creators
+         });
    });
 
    afterEach(() => {
@@ -104,7 +151,7 @@ describe('GET /api/v1/creators — total count accuracy after filter', () => {
       await httpListCreators(req, res, makeNext());
 
       const body = res.json.mock.calls[0][0];
-      
+
       // Explicit assertion: the test will fail if body.data.meta.total is the unfiltered count (5)
       // because we expect it to be exactly 3.
       expect(body.data.meta.total).toBe(3);

@@ -3,19 +3,19 @@
  * before storing social profile URLs.
  */
 const TRACKING_QUERY_PARAMS = new Set([
-  'fbclid',
-  'gclid',
-  'mc_cid',
-  'mc_eid',
-  'msclkid',
-  'ref',
-  'ref_src',
-  'ref_url',
-  'utm_campaign',
-  'utm_content',
-  'utm_medium',
-  'utm_source',
-  'utm_term',
+   'fbclid',
+   'gclid',
+   'mc_cid',
+   'mc_eid',
+   'msclkid',
+   'ref',
+   'ref_src',
+   'ref_url',
+   'utm_campaign',
+   'utm_content',
+   'utm_medium',
+   'utm_source',
+   'utm_term',
 ]);
 
 /**
@@ -26,22 +26,22 @@ const TRACKING_QUERY_PARAMS = new Set([
  * - Strips common tracking query parameters
  */
 export function normalizeSocialLinkUrl(raw: string): string {
-  const trimmed = raw.trim();
-  const parsed = new URL(trimmed);
+   const trimmed = raw.trim();
+   const parsed = new URL(trimmed);
 
-  parsed.hostname = parsed.hostname.toLowerCase();
+   parsed.hostname = parsed.hostname.toLowerCase();
 
-  for (const param of [...parsed.searchParams.keys()]) {
-    if (TRACKING_QUERY_PARAMS.has(param.toLowerCase())) {
-      parsed.searchParams.delete(param);
-    }
-  }
+   for (const param of [...parsed.searchParams.keys()]) {
+      if (TRACKING_QUERY_PARAMS.has(param.toLowerCase())) {
+         parsed.searchParams.delete(param);
+      }
+   }
 
-  let normalized = parsed.toString();
+   let normalized = parsed.toString();
 
-  if (parsed.pathname !== '/' && normalized.endsWith('/')) {
-    normalized = normalized.replace(/\/+$/, '');
-  }
+   if (parsed.pathname !== '/' && normalized.endsWith('/')) {
+      normalized = normalized.replace(/\/+$/, '');
+   }
 
-  return normalized;
+   return normalized;
 }
