@@ -17,6 +17,7 @@ import { logSellTransactionConfirmed } from '../../utils/sell-transaction-logger
 import { persistCirculatingSupply } from './persist-circulating-supply.service';
 import { invalidateVolumeLeaderboardCache } from '../creators/creator-leaderboard-volume.service';
 import { invalidateCreatorPortfolioStatsCache } from '../creators/creator-portfolio.service';
+import { invalidateActivityFeedCache } from '../activity/activity-feed.service';
 
 /**
  * Processes a batch of on-chain trade events (KEY_BOUGHT or KEY_SOLD).
@@ -96,6 +97,10 @@ export async function processTradeEvents(
       // Invalidate the volume leaderboard cache so it reflects this trade
       // instead of waiting out the full TTL (#785).
       await invalidateVolumeLeaderboardCache();
+
+      // Invalidate the platform activity feed's cached first page (#936) so
+      // this new KEY_BOUGHT ("investment") activity shows up promptly.
+      await invalidateActivityFeedCache();
 
       // 2. Ownership read model (#897):
       // - buys go through recordKeyPurchase so the weighted-average cost
