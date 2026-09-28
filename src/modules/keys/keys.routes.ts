@@ -24,6 +24,11 @@ import {
    KeyNotFoundError as OracleKeyNotFoundError,
    OraclePriceNotFoundError,
 } from './oracle-price.service';
+import {
+   getTwapPrice,
+   KeyNotFoundError as TwapKeyNotFoundError,
+} from './key-twap.service';
+import { TWAP_WINDOWS } from '../../constants/redis.constants';
 import { cacheControl } from '../../middlewares/cache-control.middleware';
 import { envConfig } from '../../config';
 import { getKeyProposals, getProposalForVoting } from './key-proposals.service';
@@ -136,6 +141,10 @@ const priceImpactQuerySchema = z.object({
       return num;
    }),
    direction: z.enum(['buy', 'sell']),
+});
+
+const twapQuerySchema = z.object({
+   window: z.enum(TWAP_WINDOWS).optional(),
 });
 
 const buybackPoolHistoryQuerySchema = z.object({
@@ -378,6 +387,38 @@ router.get(
       }
    }
 );
+
+/**
+ * GET /api/v1/keys/:keyId/price/twap?window=1h|4h|24h
+ *
+ * Returns the cached TWAP for the requested window, the bonding-curve
+ * spot price, the spot-vs-TWAP delta percentage, and a stale flag when
+ * the computation job is behind (>10 minutes since computedAt).
+ * Read-through: a cold cache is computed on demand and cached with
+ * a TTL matching the window size.
+ */
+router.get('/:keyId/price/twap', async (req, res, next) => {
+   const parsed = twapQuerySchema.safeParse(req.query);
+   if (!parsed.success) {
+      sendValidationError(
+         res,
+         'Invalid twap query',
+         zodIssuesToDetails(parsed.error.issues)
+      );
+      return;
+   }
+   try {
+      const keyId = String(req.params.keyId);
+      const window = parsed.data.window ?? '1h';
+      sendSuccess(res, await getTwapPrice(keyId, window));
+   } catch (error) {
+      if (error instanceof TwapKeyNotFoundError) {
+         sendNotFound(res, 'Key');
+         return;
+      }
+      next(error);
+   }
+});
 
 /**
  * GET /api/v1/keys/:keyId

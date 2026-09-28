@@ -262,6 +262,14 @@ export const envSchema = z
          .positive()
          .default(5),
 
+      // TWAP computation job (#963) — recomputes 1h/4h/24h TWAP per active key.
+      TWAP_COMPUTATION_ENABLED: booleanCoerce.default(true),
+      TWAP_COMPUTATION_INTERVAL_MINUTES: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(5),
+
       // Governance proposal sync job
       GOVERNANCE_SYNC_ENABLED: booleanCoerce.default(false),
       GOVERNANCE_SYNC_INTERVAL_MINUTES: z.coerce
