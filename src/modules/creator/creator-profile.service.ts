@@ -12,6 +12,7 @@ import { truncateString } from '../../utils/string-truncate.utils';
 import { computePriceChange } from '../../utils/price-change.utils';
 import { sanitizeDisplayName } from './creator-display-name-sanitize.utils';
 import { invalidateKeyFeesCache } from '../keys/key-fees.service';
+import { isFactoryKey } from '../factory/factory.service';
 
 const CREATOR_PROFILE_LIMITS = {
    displayName: 50,
@@ -114,6 +115,7 @@ export async function getCreatorProfile(
          currentPrice: null,
          price24hAgo: null,
          priceChange24h: null,
+         is_factory_key: false,
          metadata: {
             source: 'placeholder',
             isProfileComplete: false,
@@ -144,6 +146,12 @@ export async function getCreatorProfile(
       );
    }
 
+   // #983: thread `is_factory_key` through the key summary. CreatorProfile
+   // has no dedicated on-chain contract address field, so this checks the
+   // factory registry keyed by the profile id, matching how `/keys/:keyId`
+   // already treats the id as the lookup key.
+   const is_factory_key = await isFactoryKey(profile.id);
+
    return {
       creatorId: profile.id,
       displayName: profile.displayName,
@@ -159,6 +167,7 @@ export async function getCreatorProfile(
       currentPrice: snapshot ? snapshot.currentPrice.toString() : null,
       price24hAgo: snapshot ? snapshot.price24hAgo.toString() : null,
       priceChange24h,
+      is_factory_key,
       metadata: {
          source: 'database',
          isProfileComplete: !!profile.displayName && !!profile.bio,
