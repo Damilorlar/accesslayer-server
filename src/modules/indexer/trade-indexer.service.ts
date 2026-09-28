@@ -88,6 +88,13 @@ export async function processTradeEvent(
    });
 
    try {
+      const { accrueLpRewards } = await import('./lp-indexer.service');
+      await accrueLpRewards(event.creator_id, Number(event.price));
+   } catch {
+      // Non-critical: LP reward accrual failure shouldn't fail trade indexing
+   }
+
+   try {
       const { invalidateCreatorDashboardCache } =
          await import('../creator/creator-dashboard.service');
       await invalidateCreatorDashboardCache(event.creator_id);
