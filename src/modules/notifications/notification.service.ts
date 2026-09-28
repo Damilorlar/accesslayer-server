@@ -2,6 +2,7 @@
 import { prisma } from '../../utils/prisma.utils';
 import { getRedis } from '../../utils/redis.utils';
 import {
+   CIRCUIT_BREAKER_TRIP_NOTIFICATION_LIMIT,
    LOCKUP_WARNING_WINDOW_MS,
    NOTIFICATION_TYPES,
    REDIS_KEYS,
@@ -197,6 +198,49 @@ export async function buildKeySunsetFlagged(
    });
 }
 
+/**
+ * Notifications for circuit breaker trips on keys the wallet created (#987).
+ *
+ * One item per indexed CircuitBreakerTrip row, newest first. The indexer only
+ * writes a row once per unique (txHash, eventIndex), so each trip event yields
+ * exactly one notification even across indexer replays.
+ */
+async function buildCircuitBreakerTripped(
+   walletAddress: string,
+   lastReadAt: Date | null
+): Promise<NotificationItem[]> {
+   const trips = await prisma.circuitBreakerTrip.findMany({
+      where: { creatorWallet: walletAddress },
+      orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
+      take: CIRCUIT_BREAKER_TRIP_NOTIFICATION_LIMIT,
+   });
+
+   return trips.map(
+      (trip: {
+         id: string;
+         keyId: string;
+         actualBps: number;
+         maxBps: number | null;
+         txHash: string;
+         occurredAt: Date;
+      }) => {
+         const createdAt = trip.occurredAt;
+         return {
+            id: `circuit_breaker_tripped:${trip.id}`,
+            type: NOTIFICATION_TYPES.CIRCUIT_BREAKER_TRIPPED,
+            createdAt: createdAt.toISOString(),
+            read: isRead(createdAt, lastReadAt),
+            payload: {
+               keyId: trip.keyId,
+               actualBps: trip.actualBps,
+               maxBps: trip.maxBps,
+               txHash: trip.txHash,
+            },
+         };
+      }
+   );
+}
+
 async function buildPriceMoved(
    walletAddress: string,
    lastReadAt: Date | null,
@@ -259,14 +303,27 @@ export async function listNotifications(
 ): Promise<NotificationItem[]> {
    const lastReadAt = await getLastReadAt(walletAddress);
 
-   const [trades, lockups, priceMoved, keyDeprecated] = await Promise.all([
+   const [
+      trades,
+      lockups,
+      priceMoved,
+      keyDeprecated,
+      circuitBreakerTrips,
+   ] = await Promise.all([
       buildTradeCompleted(walletAddress, lastReadAt),
       buildLockupExpiring(walletAddress, lastReadAt, now),
       buildPriceMoved(walletAddress, lastReadAt, now),
       buildKeyDeprecated(walletAddress, lastReadAt),
+      buildCircuitBreakerTripped(walletAddress, lastReadAt),
    ]);
 
-   return [...trades, ...lockups, ...priceMoved, ...keyDeprecated].sort(
+   return [
+      ...trades,
+      ...lockups,
+      ...priceMoved,
+      ...keyDeprecated,
+      ...circuitBreakerTrips,
+   ].sort(
       (a, b) =>
          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
    );
