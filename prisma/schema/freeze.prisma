@@ -1,4 +1,4 @@
-﻿// prisma/schema/freeze.prisma
+// prisma/schema/freeze.prisma
 model KeyFreeze {
   id         String    @id @default(cuid())
   keyId      String    @unique   // matches KeyOwnership.creatorId (the "key" identifier in this repo)

@@ -1,4 +1,4 @@
-﻿type Entry = { value: any; expiresAt: number };
+type Entry = { value: any; expiresAt: number };
 const cache = new Map<string, Entry>();
 const TTL_MS = 30_000;
 const k = (x: string) => `freeze:${x}`;

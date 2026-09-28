@@ -1,4 +1,4 @@
-﻿// src/modules/freeze/freeze.service.ts
+// src/modules/freeze/freeze.service.ts
 import { prisma } from '../../utils/prisma.utils';
 import { logger } from '../../utils/logger.utils';
 import { emitAuditEvent } from '../../utils/audit.utils';

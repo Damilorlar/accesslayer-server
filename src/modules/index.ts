@@ -1,4 +1,3 @@
-// src/modules/index.ts
 import { Router } from 'express';
 import { routeBodySizeLimit } from '../middlewares/body-size-limit.middleware';
 import { queryCostGovernor } from '../middlewares/query-cost-governor.middleware';

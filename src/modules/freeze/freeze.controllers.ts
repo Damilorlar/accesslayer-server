@@ -1,4 +1,4 @@
-﻿import { AsyncController } from '../../types/auth.types';
+import { AsyncController } from '../../types/auth.types';
 import { sendSuccess, sendValidationError, sendNotFound } from '../../utils/api-response.utils';
 import { attachTimestampHeader } from '../../utils/timestamp-headers.utils';
 import { KeyIdParamSchema, FreezeBodySchema, UnfreezeBodySchema } from './freeze.schemas';

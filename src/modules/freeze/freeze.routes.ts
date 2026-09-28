@@ -1,4 +1,4 @@
-﻿import { Router } from 'express';
+import { Router } from 'express';
 import { adminGuard } from '../../middlewares/admin-guard.middleware';
 import { httpGetFreezeStatus, httpEmergencyFreeze, httpInitiateUnfreeze } from './freeze.controllers';
 
