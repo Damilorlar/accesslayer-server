@@ -9,6 +9,8 @@ export interface SorobanBuyEvent {
    ledger: number;
    tx_hash: string;
    timestamp: string;
+   /** Payment asset used for this purchase (e.g. 'XLM', 'USDC'). Optional; defaults to 'XLM' (#934). */
+   payment_asset?: string;
 }
 
 const REQUIRED_FIELDS: (keyof SorobanBuyEvent)[] = [
@@ -84,8 +86,19 @@ export async function processTradeEvent(
          ledger: event.ledger,
          txHash: event.tx_hash,
          timestamp: new Date(event.timestamp),
+         paymentAsset:
+            typeof event.payment_asset === 'string' && event.payment_asset.trim() !== ''
+               ? event.payment_asset.trim().toUpperCase()
+               : 'XLM',
       },
    });
+
+   try {
+      const { accrueLpRewards } = await import('./lp-indexer.service');
+      await accrueLpRewards(event.creator_id, Number(event.price));
+   } catch {
+      // Non-critical: LP reward accrual failure shouldn't fail trade indexing
+   }
 
    try {
       const { invalidateCreatorDashboardCache } =

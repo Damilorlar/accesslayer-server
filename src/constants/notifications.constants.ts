@@ -9,6 +9,7 @@ export const NOTIFICATION_TYPES = {
    KEY_DEPRECATED: 'key_deprecated',
    KEY_SUNSET_FLAGGED: 'key_sunset_flagged',
    MILESTONE_CROSSED: 'milestone_crossed',
+   CIRCUIT_BREAKER_TRIPPED: 'circuit_breaker_tripped',
 } as const;
 
 export type NotificationType =
@@ -28,6 +29,9 @@ export const REDIS_KEYS = {
    keySunsetEvent: (eventId: string) => `key_sunset:dispatch:${eventId}`,
    keyDeprecationEvent: (eventId: string) => `key_deprecation:dispatch:${eventId}`,
 } as const;
+
+/** Trips surfaced as circuit_breaker_tripped notifications, newest first (#987). */
+export const CIRCUIT_BREAKER_TRIP_NOTIFICATION_LIMIT = 50;
 
 export const KEY_FEES_CACHE_TTL_SECONDS = 60;
 export const PRICE_MOVED_SET_TTL_SECONDS = 6 * 60 * 60;

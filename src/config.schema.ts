@@ -222,6 +222,16 @@ export const envSchema = z
          .positive()
          .default(120000),
 
+      // Circuit breaker (#987): deployed contract id holding the per-key
+      // max_bps configuration, and the TTL (seconds) for the cached contract
+      // read. Defaults to a 5-minute refresh window.
+      CIRCUIT_BREAKER_CONTRACT_ID: optionalNonEmptyString,
+      CIRCUIT_BREAKER_CONFIG_CACHE_TTL_SECONDS: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(300),
+
       // Ownership snapshot cleanup job
       OWNERSHIP_SNAPSHOT_TABLE_NAME: z
          .string()
@@ -262,6 +272,14 @@ export const envSchema = z
          .positive()
          .default(5),
 
+      // TWAP computation job (#963) — recomputes 1h/4h/24h TWAP per active key.
+      TWAP_COMPUTATION_ENABLED: booleanCoerce.default(true),
+      TWAP_COMPUTATION_INTERVAL_MINUTES: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(5),
+
       // Governance proposal sync job
       GOVERNANCE_SYNC_ENABLED: booleanCoerce.default(false),
       GOVERNANCE_SYNC_INTERVAL_MINUTES: z.coerce
@@ -269,6 +287,16 @@ export const envSchema = z
          .int()
          .positive()
          .default(5),
+
+      // Key sunset watch (#931): number of consecutive inactive days before a
+      // key is considered "near threshold" and surfaced by GET /keys/sunset-watch.
+      // Keys whose on-chain KeySunsetFlagged event has been processed always
+      // appear regardless of this threshold. Defaults to 30 days.
+      KEY_SUNSET_INACTIVITY_THRESHOLD_DAYS: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(30),
 
       // Request body size limits (see docs/body-size-limits.md).
       // Accepts any size string understood by the `bytes` package used

@@ -35,6 +35,9 @@ model CreatorProfile {
   reason            String?
   /// Successor key designated to replace this one on deprecation, if any.
   successorKeyId    String?
+  /// When the on-chain KeySunsetFlagged event was processed for this key (#931).
+  /// Null while the key has not been flagged for sunset.
+  sunsetFlaggedAt   DateTime?
   /// Buy cooldown between purchases by the same wallet, in ledgers (0 = no cooldown).
   cooldownLedgers   Int      @default(0)
   perks             Json?

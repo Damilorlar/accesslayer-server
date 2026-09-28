@@ -8,6 +8,13 @@ import {
    httpGetAuditLog,
 } from './admin.controllers';
 import { httpSyncKeyState } from './key-sync.controllers';
+import {
+   httpCreateMultisigProposal,
+   httpGetMultisigProposalQueue,
+   httpGetMultisigProposalById,
+   httpSignMultisigProposal,
+   httpRejectMultisigProposal,
+} from './multisig-proposal.controllers';
 import aclRouter from '../acl/acl.routes';
 import { getKeySnapshot, KeySnapshotNotFoundError } from './key-snapshot.service';
 import { createAuditEntry } from './audit-log.service';
@@ -16,6 +23,7 @@ import {
    analyticsWindowQuerySchema,
    getPlatformAnalytics,
 } from '../keys/key-analytics.service';
+import { getProtocolLpOverview } from './lp-overview.service';
 import { flashLoanViolationsQuerySchema } from './flash-loan-violations.schemas';
 import { getFlashLoanViolations } from './flash-loan-violations.service';
 import {
@@ -102,9 +110,9 @@ function serializeTimelockAction(action: any) {
             : null,
       ...(countdownMs !== null
          ? {
-             countdownMs,
-             countdown: formatCountdown(countdownMs),
-          }
+              countdownMs,
+              countdown: formatCountdown(countdownMs),
+           }
          : {}),
    };
 }
@@ -118,6 +126,46 @@ adminRouter.post('/keys/:keyId/resume', adminGuard, httpSetKeyTradingPaused);
 adminRouter.post('/keys/:keyId/sync', adminGuard, httpSyncKeyState);
 adminRouter.patch('/protocol-fee', adminGuard, httpUpdateProtocolFee);
 adminRouter.get('/audit-log', adminGuard, httpGetAuditLog);
+
+/**
+ * GET /api/v1/admin/proposals
+ *
+ * List all multisig proposals with pagination and optional status filter.
+ * Requires admin JWT.
+ */
+adminRouter.get('/proposals', adminGuard, httpGetMultisigProposalQueue);
+
+/**
+ * POST /api/v1/admin/proposals
+ *
+ * Create a new multisig proposal requiring multi-sig approval.
+ * Requires admin JWT.
+ */
+adminRouter.post('/proposals', adminGuard, httpCreateMultisigProposal);
+
+/**
+ * GET /api/v1/admin/proposals/:id
+ *
+ * Get detailed information for a single multisig proposal including all signatures.
+ * Requires admin JWT.
+ */
+adminRouter.get('/proposals/:id', adminGuard, httpGetMultisigProposalById);
+
+/**
+ * POST /api/v1/admin/proposals/:id/sign
+ *
+ * Submit a signature/approval for a multisig proposal.
+ * Requires admin JWT and valid signer from ADMIN_MULTISIG_WALLETS.
+ */
+adminRouter.post('/proposals/:id/sign', adminGuard, httpSignMultisigProposal);
+
+/**
+ * POST /api/v1/admin/proposals/:id/reject
+ *
+ * Reject a multisig proposal.
+ * Requires admin JWT and valid signer from ADMIN_MULTISIG_WALLETS.
+ */
+adminRouter.post('/proposals/:id/reject', adminGuard, httpRejectMultisigProposal);
 
 // ── ACL whitelist management (#966) ───────────────────────────
 // GET/POST /admin/acl, DELETE /admin/acl/:contractId, GET /admin/acl/history
@@ -173,6 +221,22 @@ adminRouter.get('/analytics', adminGuard, async (req: AdminRequest, res, next) =
       sendSuccess(res, await getPlatformAnalytics(parsed.data));
    } catch (error) {
       logger.error({ error }, 'Platform analytics failed');
+      next(error);
+   }
+});
+
+/**
+ * GET /api/v1/admin/lp-overview
+ *
+ * Protocol-owned liquidity across all keys: total LP XLM contributed, the
+ * number of keys holding LP, and the number of allocation events. Sourced
+ * from LPAllocationSent contract events. Cached 60s (#943).
+ */
+adminRouter.get('/lp-overview', adminGuard, async (_req: AdminRequest, res, next) => {
+   try {
+      sendSuccess(res, await getProtocolLpOverview());
+   } catch (error) {
+      logger.error({ error }, 'LP overview failed');
       next(error);
    }
 });
