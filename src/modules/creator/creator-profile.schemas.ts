@@ -60,6 +60,8 @@ export const CreatorProfileReadResponseSchema = z.object({
    price24hAgo: z.string().nullable(),
    /** Computed percentage change. null when no baseline exists. */
    priceChange24h: z.number().nullable(),
+   /** Whether this key was deployed through the on-chain key factory (#983). */
+   is_factory_key: z.boolean(),
    metadata: z.object({
       source: z.enum(['placeholder', 'database']),
       isProfileComplete: z.boolean(),

@@ -17,12 +17,18 @@ import {
    PRICE_HISTORY_INTERVALS,
 } from './key-price-history.service';
 import { getKeyFees, KeyNotFoundError } from './key-fees.service';
+import { getKeyLpStats, getKeyLpHistory } from './key-lp.service';
 import { getKeyRelaunchHistory } from './key-relaunch.service';
 import {
    getOraclePrice,
    KeyNotFoundError as OracleKeyNotFoundError,
    OraclePriceNotFoundError,
 } from './oracle-price.service';
+import {
+   getTwapPrice,
+   KeyNotFoundError as TwapKeyNotFoundError,
+} from './key-twap.service';
+import { TWAP_WINDOWS } from '../../constants/redis.constants';
 import { cacheControl } from '../../middlewares/cache-control.middleware';
 import { envConfig } from '../../config';
 import { getKeyProposals, getProposalForVoting } from './key-proposals.service';
@@ -98,11 +104,7 @@ import {
    matchTierForLockPeriod,
    calculateEffectiveWeight,
 } from '../staking/staking.service';
-import { getSunsetWatchList } from './key-sunset-watch.service';
-import {
-   getKeyPaymentAssetAnalytics,
-   getPlatformPaymentAssetDistribution,
-} from './key-analytics.service';
+import { getKeyCurveMilestones } from './key-milestones.service';
 
 const priceHistoryQuerySchema = z.object({
    from: z.string().datetime(),
@@ -126,6 +128,11 @@ const walletQuerySchema = z.object({
    wallet: StellarAddressSchema,
 });
 
+const lpHistoryQuerySchema = z.object({
+   limit: z.coerce.number().int().positive().max(100).optional().default(20),
+   cursor: z.string().min(1).optional(),
+});
+
 const priceImpactQuerySchema = z.object({
    quantity: z.string().transform(v => {
       const num = parseInt(v, 10);
@@ -135,6 +142,10 @@ const priceImpactQuerySchema = z.object({
       return num;
    }),
    direction: z.enum(['buy', 'sell']),
+});
+
+const twapQuerySchema = z.object({
+   window: z.enum(TWAP_WINDOWS).optional(),
 });
 
 const buybackPoolHistoryQuerySchema = z.object({
@@ -501,6 +512,38 @@ router.get(
 );
 
 /**
+ * GET /api/v1/keys/:keyId/price/twap?window=1h|4h|24h
+ *
+ * Returns the cached TWAP for the requested window, the bonding-curve
+ * spot price, the spot-vs-TWAP delta percentage, and a stale flag when
+ * the computation job is behind (>10 minutes since computedAt).
+ * Read-through: a cold cache is computed on demand and cached with
+ * a TTL matching the window size.
+ */
+router.get('/:keyId/price/twap', async (req, res, next) => {
+   const parsed = twapQuerySchema.safeParse(req.query);
+   if (!parsed.success) {
+      sendValidationError(
+         res,
+         'Invalid twap query',
+         zodIssuesToDetails(parsed.error.issues)
+      );
+      return;
+   }
+   try {
+      const keyId = String(req.params.keyId);
+      const window = parsed.data.window ?? '1h';
+      sendSuccess(res, await getTwapPrice(keyId, window));
+   } catch (error) {
+      if (error instanceof TwapKeyNotFoundError) {
+         sendNotFound(res, 'Key');
+         return;
+      }
+      next(error);
+   }
+});
+
+/**
  * GET /api/v1/keys/:keyId
  * Public key detail response includes supply milestone metadata.
  */
@@ -524,6 +567,54 @@ router.get('/:keyId', async (req, res, next) => {
 router.get('/:keyId/fees', async (req, res, next) => {
    try {
       sendSuccess(res, await getKeyFees(req.params.keyId));
+   } catch (error) {
+      if (error instanceof KeyNotFoundError) {
+         sendNotFound(res, 'Key');
+         return;
+      }
+      next(error);
+   }
+});
+
+/**
+ * GET /api/v1/keys/:keyId/lp-stats
+ * Total LP contributed and current LP balance for a key, sourced from
+ * LPAllocationSent contract events. Cached 60s (#943).
+ */
+router.get('/:keyId/lp-stats', async (req, res, next) => {
+   try {
+      sendSuccess(res, await getKeyLpStats(String(req.params.keyId)));
+   } catch (error) {
+      if (error instanceof KeyNotFoundError) {
+         sendNotFound(res, 'Key');
+         return;
+      }
+      next(error);
+   }
+});
+
+/**
+ * GET /api/v1/keys/:keyId/lp-history?limit=&cursor=
+ * Paginated LP contribution history for a key, newest first (#943).
+ */
+router.get('/:keyId/lp-history', async (req, res, next) => {
+   const parsed = lpHistoryQuerySchema.safeParse(req.query);
+   if (!parsed.success) {
+      sendValidationError(
+         res,
+         'Invalid pagination query',
+         zodIssuesToDetails(parsed.error.issues)
+      );
+      return;
+   }
+   try {
+      sendSuccess(
+         res,
+         await getKeyLpHistory({
+            keyId: String(req.params.keyId),
+            ...parsed.data,
+         })
+      );
    } catch (error) {
       if (error instanceof KeyNotFoundError) {
          sendNotFound(res, 'Key');
@@ -668,6 +759,35 @@ router.get('/:keyId/supply', async (req, res, next) => {
       next(error);
    }
 });
+
+/**
+ * GET /api/v1/keys/:keyId/curve/milestones
+ * Return all milestones, current progress, and graduation status.
+ */
+router.get(
+   '/:keyId/curve/milestones',
+   cacheControl({ maxAge: 30, type: 'public', mustRevalidate: true }),
+   async (req, res, next) => {
+      const keyId = String(req.params.keyId);
+      const cacheKey = `curve-milestones:${keyId}`;
+      try {
+         const cached = await cacheGetJson<any>(cacheKey);
+         if (cached !== null) {
+            return sendSuccess(res, cached);
+         }
+
+         const result = await getKeyCurveMilestones(keyId);
+         await cacheSetJson(cacheKey, result, 30);
+         sendSuccess(res, result);
+      } catch (error) {
+         if (error instanceof Error && error.name === 'KeyNotFoundError') {
+            sendNotFound(res, 'Key');
+            return;
+         }
+         next(error);
+      }
+   }
+);
 
 /**
  * GET /api/v1/keys/:keyId/price-impact?quantity=&direction=buy|sell

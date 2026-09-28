@@ -25,6 +25,10 @@ import {
    stopPriceHistoryCleanupJob,
 } from './jobs/price-history-cleanup.job';
 import {
+   startTwapComputationJob,
+   stopTwapComputationJob,
+} from './jobs/twap-computation.job';
+import {
    startFlashLoanViolationCleanupJob,
    stopFlashLoanViolationCleanupJob,
 } from './jobs/flash-loan-violation-cleanup.job';
@@ -81,6 +85,7 @@ async function startServer() {
       startDetectPriceMovementsJob();
       startGovernanceSyncJob();
       startPriceHistoryCleanupJob();
+      startTwapComputationJob();
       startFlashLoanViolationCleanupJob();
 
       const server = app.listen(envConfig.PORT, () => {
@@ -118,6 +123,7 @@ function createGracefulShutdownHandler(server: ReturnType<typeof app.listen>) {
       stopDetectPriceMovementsJob();
       stopGovernanceSyncJob();
       stopPriceHistoryCleanupJob();
+      stopTwapComputationJob();
       stopFlashLoanViolationCleanupJob();
       await prisma.$disconnect();
       logger.info('Database connection closed');

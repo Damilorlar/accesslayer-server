@@ -1,6 +1,7 @@
+import { Router } from 'express';
 import { routeBodySizeLimit } from '../middlewares/body-size-limit.middleware';
 import { queryCostGovernor } from '../middlewares/query-cost-governor.middleware';
-import { Router } from 'express';
+
 import authRouter from './auth/auth.routes';
 import healthRouter from './health/health.routes';
 import configRouter from './config/config.routes';
@@ -15,6 +16,8 @@ import subscriptionRouter from './subscriptions/subscription.routes';
 import webhookRouter from './webhooks/webhook.router';
 import walletsRouter from './wallets/wallets.routes';
 import alertsRouter from './alerts/alert.router';
+import freezeRouter from './freeze/freeze.routes';
+
 import tradingRouter from './trading/multi-buy.routes';
 import sequencerRouter from './admin/sequencer.routes';
 import keysRouter from './keys/keys.routes';
@@ -32,6 +35,9 @@ import portfolioRouter from './portfolio/portfolio.routes';
 import contractsRouter from './contracts/contract.routes';
 import stakingRouter from './staking/staking.routes';
 import sellersRouter from './sellers/sellers.routes';
+import governanceRouter from './governance/governance.routes';
+import factoryRouter from './factory/factory.routes';
+import lpRouter from './lp/lp.routes';
 import { BASE as CREATORS_BASE } from '../constants/creator.constants';
 
 const router = Router();
@@ -66,7 +72,13 @@ router.use('/wallets', routeBodySizeLimit('default'), walletsRouter);
 router.use('/alerts', routeBodySizeLimit('default'), alertsRouter);
 router.use('/trading', routeBodySizeLimit('default'), tradingRouter);
 router.use('/internal', routeBodySizeLimit('default'), sequencerRouter);
+
+// Keys: existing keysRouter first, then freezeRouter so /:keyId/freeze and
+// /:keyId/unfreeze fall through to freeze handlers if keysRouter doesn't own
+// them. Both share the same body-size group.
 router.use('/keys', routeBodySizeLimit('default'), keysRouter);
+router.use('/keys', routeBodySizeLimit('default'), freezeRouter);
+
 router.use(
    '/notifications',
    routeBodySizeLimit('default'),
@@ -86,5 +98,8 @@ router.use('/watchlist', routeBodySizeLimit('default'), watchlistRouter);
 router.use('/investor/watchlist', routeBodySizeLimit('default'), watchlistRouter);
 router.use('/staking', routeBodySizeLimit('default'), stakingRouter);
 router.use('/sellers', routeBodySizeLimit('default'), sellersRouter);
+router.use('/governance', routeBodySizeLimit('default'), governanceRouter);
+router.use('/factory', routeBodySizeLimit('default'), factoryRouter);
+router.use('/lp', routeBodySizeLimit('default'), lpRouter);
 
 export default router;
