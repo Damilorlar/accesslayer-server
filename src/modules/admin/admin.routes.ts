@@ -16,6 +16,7 @@ import {
    analyticsWindowQuerySchema,
    getPlatformAnalytics,
 } from '../keys/key-analytics.service';
+import { getProtocolLpOverview } from './lp-overview.service';
 import { flashLoanViolationsQuerySchema } from './flash-loan-violations.schemas';
 import { getFlashLoanViolations } from './flash-loan-violations.service';
 import {
@@ -173,6 +174,22 @@ adminRouter.get('/analytics', adminGuard, async (req: AdminRequest, res, next) =
       sendSuccess(res, await getPlatformAnalytics(parsed.data));
    } catch (error) {
       logger.error({ error }, 'Platform analytics failed');
+      next(error);
+   }
+});
+
+/**
+ * GET /api/v1/admin/lp-overview
+ *
+ * Protocol-owned liquidity across all keys: total LP XLM contributed, the
+ * number of keys holding LP, and the number of allocation events. Sourced
+ * from LPAllocationSent contract events. Cached 60s (#943).
+ */
+adminRouter.get('/lp-overview', adminGuard, async (_req: AdminRequest, res, next) => {
+   try {
+      sendSuccess(res, await getProtocolLpOverview());
+   } catch (error) {
+      logger.error({ error }, 'LP overview failed');
       next(error);
    }
 });
