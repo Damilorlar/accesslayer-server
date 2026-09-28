@@ -58,8 +58,6 @@ router.use(CREATORS_BASE, webhookRouter);
 router.use('/wallets', walletsRouter);
 router.use('/alerts', alertsRouter);
 
-export default router;
-
 // Adaptive per-wallet/per-IP database query cost governor (#755). Mounted
 // ahead of route resolution (so it matches on req.path, not req.route — see
 // query-cost.utils.ts) and ahead of every group below, so it covers the

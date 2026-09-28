@@ -114,7 +114,24 @@ export async function removeFromWatchlist(
 export async function getWatchlist(walletAddress: string) {
    const items = await prisma.investorWatchlist.findMany({
       where: { walletAddress },
-      include: { invoice: true },
+      include: {
+         invoice: {
+            select: {
+               id: true,
+               sellerWallet: true,
+               amount: true,
+               currency: true,
+               status: true,
+               statusUpdatedAt: true,
+               maturityDate: true,
+               rate: true,
+               riskRating: true,
+               fundingProgress: true,
+               createdAt: true,
+               updatedAt: true,
+            },
+         },
+      },
       orderBy: { createdAt: 'desc' },
    });
 
