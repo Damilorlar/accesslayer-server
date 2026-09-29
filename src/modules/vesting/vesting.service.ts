@@ -107,10 +107,10 @@ function toVestingSchedule(
   schedule: {
     keyId: string;
     wallet: string;
-    totalKeys: string | number | bigint;
+    totalKeys: { toString(): string };
     startLedger: number;
     endLedger: number;
-    claimedKeys: string | number | bigint;
+    claimedKeys: { toString(): string };
   },
   currentLedger: number
 ): VestingSchedule {
