@@ -44,6 +44,8 @@ model Invoice {
   riskRating      String   // Risk rating (e.g., "low", "medium", "high")
   sellerStats     Json     // Additional seller statistics
   sellerWallet    String   // Seller wallet address
+  status          String
+  statusUpdatedAt DateTime // When the status was last updated
   fundingProgress Decimal // Funding progress percentage or amount
   tradeType       String   // "buy" or "sell"
   actor           String   // Wallet address of the buyer/seller

@@ -30,7 +30,7 @@ function toISO(val: unknown): string {
    return new Date().toISOString();
 }
 
-function toOptionalISO(val: unknown): string | null {
+function _toOptionalISO(_val: unknown): string | null {
    if (!val) return null;
    if (val instanceof Date) return val.toISOString();
    if (typeof val === 'string') {
@@ -41,9 +41,10 @@ function toOptionalISO(val: unknown): string | null {
 }
 
 /**
- * Add an invoice to the authenticated investor wallet's watchlist.
+ * Convert a value to an ISO string representation.
+ * Handles Date objects, numeric timestamps, and strings.
  */
-export async function addToWatchlist(walletAddress: string, invoiceId: string) {
+function toISO(val: unknown): string {
    const invoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
    });
