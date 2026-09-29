@@ -72,6 +72,7 @@ import {
    BuybackPriceNotSetError,
    BuybackWindowClosedError,
    deprecateKey,
+   getKeyDeprecationStatus,
    InsufficientPositionError,
    KeyAlreadyDeprecatedError,
    KeyNotDeprecatedError,
@@ -105,6 +106,16 @@ import {
    calculateEffectiveWeight,
 } from '../staking/staking.service';
 import { getKeyCurveMilestones } from './key-milestones.service';
+import { getSunsetWatchList } from './key-sunset-watch.service';
+import {
+   getKeyPaymentAssetAnalytics,
+   getPlatformPaymentAssetDistribution,
+} from './key-analytics.service';
+import {
+   getCircuitBreakerState,
+   KeyNotFoundError as CircuitBreakerKeyNotFoundError,
+} from './circuit-breaker.service';
+import { circuitBreakerQuerySchema } from './circuit-breaker.schemas';
 
 const priceHistoryQuerySchema = z.object({
    from: z.string().datetime(),
@@ -323,6 +334,169 @@ router.get('/search', async (req, res, next) => {
          sendError(res, 400, ErrorCode.VALIDATION_ERROR, error.message);
          return;
       }
+      next(error);
+   }
+});
+
+// ── Pagination constants ────────────────────────────────────
+const DEFAULT_SUNSET_WATCH_LIMIT = 20;
+const MAX_SUNSET_WATCH_LIMIT = 100;
+
+const sunsetWatchQuerySchema = z.object({
+   limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(MAX_SUNSET_WATCH_LIMIT)
+      .default(DEFAULT_SUNSET_WATCH_LIMIT),
+   offset: z.coerce.number().int().min(0).default(0),
+});
+
+/**
+ * GET /api/v1/keys/sunset-watch
+ *
+ * Admin-only endpoint that returns all creator keys approaching or past the
+ * inactivity sunset threshold, plus any keys already flagged on-chain via a
+ * KeySunsetFlagged event.
+ *
+ * Each item includes:
+ *   - keyId, handle, displayName, circulatingSupply
+ *   - lastTradeAt        — ISO timestamp of the last KEY_BOUGHT/KEY_SOLD, or null
+ *   - daysSinceLastTrade — whole days elapsed since last trade, or null
+ *   - sunsetFlaggedAt    — ISO timestamp the on-chain flag was processed, or null
+ *   - sunsetStatus       — 'sunset_pending' | 'threshold_exceeded' | 'near_threshold'
+ *
+ * Results are sorted by inactivity duration descending (most inactive first).
+ * Keys that have never traded appear after all keys with a known last trade.
+ *
+ * Query parameters:
+ *   - limit  (default 20, max 100)
+ *   - offset (default 0)
+ *
+ * Responses:
+ *   200 — paginated list of sunset-watch items
+ *   400 — invalid query parameters
+ *   401 — missing or invalid admin token
+ *   403 — token present but role !== 'admin'
+ *
+ * Must be registered before /:keyId to avoid route shadowing.
+ */
+router.get(
+   '/sunset-watch',
+   adminGuard,
+   async (req: AdminRequest, res, next) => {
+      const parsed = sunsetWatchQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+         sendValidationError(
+            res,
+            'Invalid query parameters',
+            zodIssuesToDetails(parsed.error.issues)
+         );
+         return;
+      }
+
+      try {
+         const result = await getSunsetWatchList({
+            limit: parsed.data.limit,
+            offset: parsed.data.offset,
+         });
+         sendSuccess(res, result);
+      } catch (error) {
+         logger.error({ error }, 'GET /keys/sunset-watch failed');
+         next(error);
+      }
+   }
+);
+
+/**
+ * GET /api/v1/keys/analytics/payment-assets
+ *
+ * Admin-only. Returns the platform-wide distribution of payment assets used
+ * across all key purchases — trade count, unique buyers, total price in
+ * stroops, and percentage share per asset.
+ *
+ * Must be registered before /:keyId to avoid route shadowing.
+ *
+ * Responses:
+ *   200 — PlatformPaymentAssetDistribution
+ *   401/403 — missing or invalid admin token
+ */
+router.get(
+   '/analytics/payment-assets',
+   adminGuard,
+   async (_req: AdminRequest, res, next) => {
+      try {
+         sendSuccess(res, await getPlatformPaymentAssetDistribution());
+      } catch (error) {
+         logger.error({ error }, 'GET /keys/analytics/payment-assets failed');
+         next(error);
+      }
+   }
+);
+
+/**
+ * GET /api/v1/keys/:keyId/analytics
+ *
+ * Returns the payment-asset breakdown for a single key: trade count, unique
+ * buyers, and total price in stroops grouped by paymentAsset.
+ * Resolves keyId by DB id or handle.
+ *
+ * Publicly accessible — the payment-asset mix for a key is not sensitive.
+ *
+ * Responses:
+ *   200 — KeyPaymentAssetAnalytics
+ *   404 — key not found
+ */
+router.get('/:keyId/analytics', async (req, res, next) => {
+   try {
+      sendSuccess(res, await getKeyPaymentAssetAnalytics(String(req.params.keyId)));
+   } catch (error) {
+      if (error instanceof KeyNotFoundError) {
+         sendNotFound(res, 'Key');
+         return;
+      }
+      logger.error({ error, keyId: req.params.keyId }, 'GET /keys/:keyId/analytics failed');
+      next(error);
+   }
+});
+
+/**
+ * GET /api/v1/keys/:keyId/circuit-breaker?limit=&offset=
+ *
+ * Returns the key's circuit breaker state: the configured max_bps (read from
+ * the contract and cached for 5 minutes, falling back to the indexed value),
+ * whether the breaker is currently active (the latest trip's actual bps met or
+ * exceeded the threshold), and the paginated trip history, newest first
+ * (50 per page by default). Resolves keyId by DB id or handle.
+ *
+ * Responses:
+ *   200 — { keyId, maxBps, active, config, tripCount, limit, offset, trips }
+ *   400 — invalid pagination query
+ *   404 — key not found
+ */
+router.get('/:keyId/circuit-breaker', async (req, res, next) => {
+   const parsed = circuitBreakerQuerySchema.safeParse(req.query);
+   if (!parsed.success) {
+      sendValidationError(
+         res,
+         'Invalid circuit breaker query',
+         zodIssuesToDetails(parsed.error.issues)
+      );
+      return;
+   }
+
+   try {
+      const keyId = String(req.params.keyId);
+      sendSuccess(res, await getCircuitBreakerState(keyId, parsed.data));
+   } catch (error) {
+      if (error instanceof CircuitBreakerKeyNotFoundError) {
+         sendNotFound(res, 'Key');
+         return;
+      }
+      logger.error(
+         { error, keyId: req.params.keyId },
+         'GET /keys/:keyId/circuit-breaker failed'
+      );
       next(error);
    }
 });
@@ -1217,6 +1391,40 @@ router.post(
 
 router.all('/:keyId/deprecate', (_req, res) => {
    res.set('Allow', 'POST').sendStatus(405);
+});
+
+// ── GET /:keyId/deprecation ───────────────────────────────────
+// Public read of a key's deprecation status: status, reason, deprecatedAt,
+// and an embedded summary of the designated successor key, if any.
+
+/**
+ * GET /api/v1/keys/:keyId/deprecation
+ *
+ * Returns the current deprecation status for a key. `status` is `active`
+ * when `deprecatedAt` is unset, otherwise `deprecated`. `successor` embeds
+ * `{ id, name, avatarUrl, currentPrice }` when a successor key was
+ * designated and still exists; otherwise `null`.
+ */
+router.get('/:keyId/deprecation', async (req, res, next) => {
+   try {
+      const keyId = String(req.params.keyId);
+      const result = await getKeyDeprecationStatus(keyId);
+      sendSuccess(res, result, 200);
+   } catch (error) {
+      if (error instanceof KeyNotFoundError) {
+         sendNotFound(res, 'Key');
+         return;
+      }
+      logger.error(
+         { error, keyId: req.params.keyId },
+         'Get key deprecation status failed'
+      );
+      next(error);
+   }
+});
+
+router.all('/:keyId/deprecation', (_req, res) => {
+   res.set('Allow', 'GET').sendStatus(405);
 });
 
 // ── POST /:keyId/buyback ─────────────────────────────────────
