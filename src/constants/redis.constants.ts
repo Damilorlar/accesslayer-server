@@ -27,3 +27,9 @@ export const TWAP_STALE_THRESHOLD_MS = 10 * 60 * 1000;
 
 // Cap on snapshots scanned per TWAP computation (matches price-history cap).
 export const TWAP_MAX_SNAPSHOTS = 5000;
+
+// Circuit breaker config cache (#987): the contract-read max_bps per key.
+// Entries expire after CIRCUIT_BREAKER_CONFIG_CACHE_TTL_SECONDS (5 minutes),
+// so the stored configuration is refreshed from the contract every 5 minutes.
+export const circuitBreakerConfigRedisKey = (keyId: string): string =>
+   `circuit-breaker:config:${keyId}`;

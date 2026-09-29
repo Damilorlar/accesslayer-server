@@ -222,6 +222,16 @@ export const envSchema = z
          .positive()
          .default(120000),
 
+      // Circuit breaker (#987): deployed contract id holding the per-key
+      // max_bps configuration, and the TTL (seconds) for the cached contract
+      // read. Defaults to a 5-minute refresh window.
+      CIRCUIT_BREAKER_CONTRACT_ID: optionalNonEmptyString,
+      CIRCUIT_BREAKER_CONFIG_CACHE_TTL_SECONDS: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(300),
+
       // Ownership snapshot cleanup job
       OWNERSHIP_SNAPSHOT_TABLE_NAME: z
          .string()

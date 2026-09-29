@@ -72,6 +72,7 @@ import {
    BuybackPriceNotSetError,
    BuybackWindowClosedError,
    deprecateKey,
+   getKeyDeprecationStatus,
    InsufficientPositionError,
    KeyAlreadyDeprecatedError,
    KeyNotDeprecatedError,
@@ -110,6 +111,11 @@ import {
    getKeyPaymentAssetAnalytics,
    getPlatformPaymentAssetDistribution,
 } from './key-analytics.service';
+import {
+   getCircuitBreakerState,
+   KeyNotFoundError as CircuitBreakerKeyNotFoundError,
+} from './circuit-breaker.service';
+import { circuitBreakerQuerySchema } from './circuit-breaker.schemas';
 
 const priceHistoryQuerySchema = z.object({
    from: z.string().datetime(),
@@ -455,6 +461,47 @@ router.get('/:keyId/analytics', async (req, res, next) => {
 });
 
 /**
+ * GET /api/v1/keys/:keyId/circuit-breaker?limit=&offset=
+ *
+ * Returns the key's circuit breaker state: the configured max_bps (read from
+ * the contract and cached for 5 minutes, falling back to the indexed value),
+ * whether the breaker is currently active (the latest trip's actual bps met or
+ * exceeded the threshold), and the paginated trip history, newest first
+ * (50 per page by default). Resolves keyId by DB id or handle.
+ *
+ * Responses:
+ *   200 — { keyId, maxBps, active, config, tripCount, limit, offset, trips }
+ *   400 — invalid pagination query
+ *   404 — key not found
+ */
+router.get('/:keyId/circuit-breaker', async (req, res, next) => {
+   const parsed = circuitBreakerQuerySchema.safeParse(req.query);
+   if (!parsed.success) {
+      sendValidationError(
+         res,
+         'Invalid circuit breaker query',
+         zodIssuesToDetails(parsed.error.issues)
+      );
+      return;
+   }
+
+   try {
+      const keyId = String(req.params.keyId);
+      sendSuccess(res, await getCircuitBreakerState(keyId, parsed.data));
+   } catch (error) {
+      if (error instanceof CircuitBreakerKeyNotFoundError) {
+         sendNotFound(res, 'Key');
+         return;
+      }
+      logger.error(
+         { error, keyId: req.params.keyId },
+         'GET /keys/:keyId/circuit-breaker failed'
+      );
+      next(error);
+   }
+});
+
+/**
  * GET /api/v1/keys/:keyId/oracle-price
  *
  * Returns the current oracle price (synced from OraclePriceUpdated contract
@@ -572,6 +619,55 @@ router.get('/:keyId', async (req, res, next) => {
 router.get('/:keyId/fees', async (req, res, next) => {
    try {
       sendSuccess(res, await getKeyFees(req.params.keyId));
+   } catch (error) {
+      if (error instanceof KeyNotFoundError) {
+         sendNotFound(res, 'Key');
+         return;
+      }
+      next(error);
+   }
+});
+
+const dynamicFeeQuerySchema = z.object({
+   amount: z.coerce.number().int().nonnegative(),
+   direction: z.enum(['buy', 'sell']),
+   wallet: StellarAddressSchema.optional(),
+});
+
+/**
+ * GET /api/v1/keys/:keyId/fee
+ * Computes the effective dynamic fee rate for a given trade, factoring in base fee,
+ * volume-tier discount, protocol fee, and creator royalty (#962).
+ */
+router.get('/:keyId/fee', async (req, res, next) => {
+   const parsed = dynamicFeeQuerySchema.safeParse(req.query);
+   if (!parsed.success) {
+      sendValidationError(
+         res,
+         'Invalid dynamic fee query',
+         zodIssuesToDetails(parsed.error.issues)
+      );
+      return;
+   }
+
+   try {
+      // We dynamically load the service here to avoid massive circular imports if any
+      const { getDynamicFeeRate } = await import('./key-dynamic-fee.service');
+      
+      // If the request is authenticated, we use the user's wallet for the volume discount
+      // In a real implementation we would extract the wallet from the JWT middleware (req.user),
+      // but this endpoint is public. We optionally accept a wallet address to preview discount.
+      const wallet = parsed.data.wallet;
+
+      sendSuccess(
+         res,
+         await getDynamicFeeRate(
+            req.params.keyId,
+            parsed.data.amount,
+            parsed.data.direction,
+            wallet
+         )
+      );
    } catch (error) {
       if (error instanceof KeyNotFoundError) {
          sendNotFound(res, 'Key');
@@ -1344,6 +1440,40 @@ router.post(
 
 router.all('/:keyId/deprecate', (_req, res) => {
    res.set('Allow', 'POST').sendStatus(405);
+});
+
+// ── GET /:keyId/deprecation ───────────────────────────────────
+// Public read of a key's deprecation status: status, reason, deprecatedAt,
+// and an embedded summary of the designated successor key, if any.
+
+/**
+ * GET /api/v1/keys/:keyId/deprecation
+ *
+ * Returns the current deprecation status for a key. `status` is `active`
+ * when `deprecatedAt` is unset, otherwise `deprecated`. `successor` embeds
+ * `{ id, name, avatarUrl, currentPrice }` when a successor key was
+ * designated and still exists; otherwise `null`.
+ */
+router.get('/:keyId/deprecation', async (req, res, next) => {
+   try {
+      const keyId = String(req.params.keyId);
+      const result = await getKeyDeprecationStatus(keyId);
+      sendSuccess(res, result, 200);
+   } catch (error) {
+      if (error instanceof KeyNotFoundError) {
+         sendNotFound(res, 'Key');
+         return;
+      }
+      logger.error(
+         { error, keyId: req.params.keyId },
+         'Get key deprecation status failed'
+      );
+      next(error);
+   }
+});
+
+router.all('/:keyId/deprecation', (_req, res) => {
+   res.set('Allow', 'GET').sendStatus(405);
 });
 
 // ── POST /:keyId/buyback ─────────────────────────────────────
