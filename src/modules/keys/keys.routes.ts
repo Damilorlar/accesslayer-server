@@ -28,6 +28,10 @@ import {
    getTwapPrice,
    KeyNotFoundError as TwapKeyNotFoundError,
 } from './key-twap.service';
+import {
+   getKeyMetadata,
+   KeyMetadataNotFoundError,
+} from './key-metadata-sync.service';
 import { TWAP_WINDOWS } from '../../constants/redis.constants';
 import { cacheControl } from '../../middlewares/cache-control.middleware';
 import { envConfig } from '../../config';
@@ -575,6 +579,28 @@ router.get(
       }
    }
 );
+
+/**
+ * GET /api/v1/keys/:keyId/metadata
+ *
+ * Returns synced on-chain creator key metadata (name, symbol, description,
+ * imageCid, imageUrl) along with a `stale` flag when synchronization is
+ * delayed by more than 10 minutes (#986).
+ */
+router.get('/:keyId/metadata', async (req, res, next) => {
+   const keyId = String(req.params.keyId);
+   try {
+      const metadata = await getKeyMetadata(keyId);
+      sendSuccess(res, metadata);
+   } catch (error) {
+      if (error instanceof KeyMetadataNotFoundError) {
+         sendNotFound(res, 'Key metadata');
+         return;
+      }
+      next(error);
+   }
+});
+
 
 /**
  * GET /api/v1/keys/:keyId/price/twap?window=1h|4h|24h
