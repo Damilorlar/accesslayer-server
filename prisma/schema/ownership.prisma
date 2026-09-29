@@ -43,6 +43,7 @@ model Invoice {
   maturity        DateTime // When the invoice/matured
   riskRating      String   // Risk rating (e.g., "low", "medium", "high")
   sellerStats     Json     // Additional seller statistics
+  sellerWallet    String   // Seller wallet address
   fundingProgress Decimal // Funding progress percentage or amount
   tradeType       String   // "buy" or "sell"
   actor           String   // Wallet address of the buyer/seller

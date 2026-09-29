@@ -32,7 +32,7 @@ export async function fetchInvoiceMetrics(invoiceIds: string[]): Promise<Invoice
          rate: inv.rate.toString(),
          maturity: inv.maturity.toISOString(),
          riskRating: inv.riskRating,
-         sellerStats: inv.sellerStats ?? {},
+         sellerStats: inv.sellerStats as Record<string, any> ?? {},
          fundingProgress: inv.fundingProgress.toString(),
       });
    }
