@@ -628,6 +628,55 @@ router.get('/:keyId/fees', async (req, res, next) => {
    }
 });
 
+const dynamicFeeQuerySchema = z.object({
+   amount: z.coerce.number().int().nonnegative(),
+   direction: z.enum(['buy', 'sell']),
+   wallet: StellarAddressSchema.optional(),
+});
+
+/**
+ * GET /api/v1/keys/:keyId/fee
+ * Computes the effective dynamic fee rate for a given trade, factoring in base fee,
+ * volume-tier discount, protocol fee, and creator royalty (#962).
+ */
+router.get('/:keyId/fee', async (req, res, next) => {
+   const parsed = dynamicFeeQuerySchema.safeParse(req.query);
+   if (!parsed.success) {
+      sendValidationError(
+         res,
+         'Invalid dynamic fee query',
+         zodIssuesToDetails(parsed.error.issues)
+      );
+      return;
+   }
+
+   try {
+      // We dynamically load the service here to avoid massive circular imports if any
+      const { getDynamicFeeRate } = await import('./key-dynamic-fee.service');
+      
+      // If the request is authenticated, we use the user's wallet for the volume discount
+      // In a real implementation we would extract the wallet from the JWT middleware (req.user),
+      // but this endpoint is public. We optionally accept a wallet address to preview discount.
+      const wallet = parsed.data.wallet;
+
+      sendSuccess(
+         res,
+         await getDynamicFeeRate(
+            req.params.keyId,
+            parsed.data.amount,
+            parsed.data.direction,
+            wallet
+         )
+      );
+   } catch (error) {
+      if (error instanceof KeyNotFoundError) {
+         sendNotFound(res, 'Key');
+         return;
+      }
+      next(error);
+   }
+});
+
 /**
  * GET /api/v1/keys/:keyId/lp-stats
  * Total LP contributed and current LP balance for a key, sourced from
