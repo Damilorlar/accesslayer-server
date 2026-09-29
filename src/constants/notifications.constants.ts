@@ -27,6 +27,7 @@ export const REDIS_KEYS = {
    priceMovedSet: 'price_moved:keys',
    priceMovedDelivered: (keyId: string) => `price_moved:delivered:${keyId}`,
    keySunsetEvent: (eventId: string) => `key_sunset:dispatch:${eventId}`,
+   keyDeprecationEvent: (eventId: string) => `key_deprecation:dispatch:${eventId}`,
 } as const;
 
 /** Trips surfaced as circuit_breaker_tripped notifications, newest first (#987). */
