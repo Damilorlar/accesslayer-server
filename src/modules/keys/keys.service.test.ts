@@ -12,7 +12,7 @@ import { prisma } from '../../utils/prisma.utils';
 
 jest.mock('../../utils/prisma.utils', () => ({
    prisma: {
-      trade: { groupBy: jest.fn() },
+      trade: { findMany: jest.fn() },
       creatorProfile: { findMany: jest.fn() },
       $queryRawUnsafe: jest.fn(),
    },
@@ -23,7 +23,7 @@ jest.mock('../../utils/logger.utils', () => ({
 }));
 
 const mockedPrisma = prisma as unknown as {
-   trade: { groupBy: jest.Mock };
+   trade: { findMany: jest.Mock };
    creatorProfile: { findMany: jest.Mock };
    $queryRawUnsafe: jest.Mock;
 };
@@ -49,12 +49,15 @@ beforeEach(() => {
 
 describe('getDiscovery (#901)', () => {
    it('returns top 5 by 24h volume and 10 newest listings', async () => {
-      mockedPrisma.trade.groupBy.mockResolvedValue(
-         ['a', 'b', 'c', 'd', 'e', 'f'].map((id, i) => ({
-            creatorId: id,
-            _sum: { price: String(1000 - i * 100) },
-         }))
-      );
+      mockedPrisma.trade.findMany.mockImplementation(async (args: any) => {
+         void args;
+         return ['a', 'b', 'c', 'd', 'e', 'f'].flatMap((id, i) =>
+            Array.from({ length: 1000 - i * 100 }, () => ({
+               creatorId: id,
+               price: '1',
+            }))
+         );
+      });
       mockedPrisma.creatorProfile.findMany.mockImplementation(
          async (args: any) => {
             if (args.orderBy) {
@@ -69,7 +72,7 @@ describe('getDiscovery (#901)', () => {
       const body = await getDiscovery();
       expect(body.trending).toHaveLength(5);
       expect(body.trending[0].volume_24h).toBe('1000');
-      expect(body.trending[0].rank ?? undefined).toBeUndefined();
+      expect((body.trending[0] as unknown as { rank?: number }).rank ?? undefined).toBeUndefined();
       expect(body.new_listings).toHaveLength(2);
       // Snapshot-derived price and change present on every entry.
       expect(body.trending[0].price).toBe('500');
@@ -77,10 +80,12 @@ describe('getDiscovery (#901)', () => {
    });
 
    it('zero-volume sections still return entries from snapshots', async () => {
-      mockedPrisma.trade.groupBy.mockResolvedValue([]);
-      mockedPrisma.creatorProfile.findMany.mockImplementation(async (args: any) =>
-         args.orderBy ? [CREATOR_BARE('only', 'lonely')] : []
-      );
+      mockedPrisma.trade.findMany.mockResolvedValue([]);
+      // Same fixture for both queries: the new-listings findMany (has orderBy)
+      // and the buildMarketEntries lookup (where.id.in, no orderBy).
+      mockedPrisma.creatorProfile.findMany.mockResolvedValue([
+         CREATOR_BARE('only', 'lonely'),
+      ]);
 
       const body = await getDiscovery();
       expect(body.trending).toEqual([]);
@@ -90,31 +95,34 @@ describe('getDiscovery (#901)', () => {
    });
 
    it('caches for 60s and invalidates on key creation', async () => {
-      mockedPrisma.trade.groupBy.mockResolvedValue([
-         { creatorId: 'a', _sum: { price: '10' } },
-      ]);
+      mockedPrisma.trade.findMany.mockResolvedValue(
+         Array.from({ length: 10 }, () => ({ creatorId: 'a', price: '1' }))
+      );
       mockedPrisma.creatorProfile.findMany.mockResolvedValue([
          CREATOR('a', 'alpha', '5', '4'),
       ]);
 
       await getDiscovery();
-      expect(mockedPrisma.trade.groupBy).toHaveBeenCalledTimes(1);
+      expect(mockedPrisma.trade.findMany).toHaveBeenCalledTimes(1);
       await getDiscovery();
-      expect(mockedPrisma.trade.groupBy).toHaveBeenCalledTimes(1); // cache hit
+      expect(mockedPrisma.trade.findMany).toHaveBeenCalledTimes(1); // cache hit
 
       invalidateKeysCache();
       await getDiscovery();
-      expect(mockedPrisma.trade.groupBy).toHaveBeenCalledTimes(2); // invalidated
+      expect(mockedPrisma.trade.findMany).toHaveBeenCalledTimes(2); // invalidated
    });
 });
 
 describe('getLeaderboard (#896)', () => {
    it('ranks by volume descending with rank numbers', async () => {
-      mockedPrisma.trade.groupBy.mockResolvedValue([
-         { creatorId: 'low', _sum: { price: '5' } },
-         { creatorId: 'high', _sum: { price: '999' } },
-         { creatorId: 'mid', _sum: { price: '50' } },
-      ]);
+      mockedPrisma.trade.findMany.mockImplementation(async (args: any) => {
+         void args;
+         return [
+            ...Array.from({ length: 5 }, () => ({ creatorId: 'low', price: '1' })),
+            ...Array.from({ length: 999 }, () => ({ creatorId: 'high', price: '1' })),
+            ...Array.from({ length: 50 }, () => ({ creatorId: 'mid', price: '1' })),
+         ];
+      });
       mockedPrisma.creatorProfile.findMany.mockImplementation(async (args: any) =>
          (args.where.id.in as string[]).map((id) => CREATOR(id, id, '10', '5'))
       );
@@ -126,12 +134,12 @@ describe('getLeaderboard (#896)', () => {
    });
 
    it('accepts every supported window and caps the limit', async () => {
-      mockedPrisma.trade.groupBy.mockResolvedValue([]);
+      mockedPrisma.trade.findMany.mockResolvedValue([]);
       mockedPrisma.creatorProfile.findMany.mockResolvedValue([]);
 
       for (const window of ['24h', '7d', '30d'] as const) {
          await getLeaderboard(window, 100); // 100 exceeds the cap; service clamps at the controller, service trusts caller here
-         expect(mockedPrisma.trade.groupBy).toHaveBeenCalledWith(
+         expect(mockedPrisma.trade.findMany).toHaveBeenCalledWith(
             expect.objectContaining({
                where: expect.objectContaining({ timestamp: expect.anything() }),
             })

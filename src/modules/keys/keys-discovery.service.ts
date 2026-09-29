@@ -86,19 +86,22 @@ const WINDOW_MS: Record<'24h' | '7d' | '30d', number> = {
  * requested window, grouped by creator, descending. Returns only creators
  * that traded, so callers merge with the creator list for the zero-volume
  * tail.
+ *
+ * `Trade.price` is a String column (stroops), so Prisma cannot sum it
+ * server-side — rows are fetched and summed client-side as BigInt.
  */
 export async function aggregateVolumeByCreator(
    window: '24h' | '7d' | '30d'
 ): Promise<Map<string, bigint>> {
    const since = new Date(Date.now() - WINDOW_MS[window]);
-   const grouped = await prisma.trade.groupBy({
-      by: ['creatorId'],
+   const rows = await prisma.trade.findMany({
       where: { timestamp: { gte: since } },
-      _sum: { price: true },
+      select: { creatorId: true, price: true },
    });
    const out = new Map<string, bigint>();
-   for (const row of grouped) {
-      out.set(row.creatorId, BigInt(row._sum.price ?? '0'));
+   for (const row of rows) {
+      const prev = out.get(row.creatorId) ?? 0n;
+      out.set(row.creatorId, prev + BigInt(row.price));
    }
    return out;
 }
@@ -111,18 +114,15 @@ export async function aggregateVolumeByCreator(
 export async function buildMarketEntries(
    creatorIds: string[]
 ): Promise<Map<string, KeyMarketEntry>> {
-   const [creators] = await Promise.all([
-      prisma.creatorProfile.findMany({
-         where: { id: { in: creatorIds } },
-         select: {
-            id: true,
-            handle: true,
-            displayName: true,
-            priceSnapshot: { select: { currentPrice: true, price24hAgo: true } },
-         },
-      }),
-      Promise.resolve(null),
-   ]);
+   const creators = await prisma.creatorProfile.findMany({
+      where: { id: { in: creatorIds } },
+      select: {
+         id: true,
+         handle: true,
+         displayName: true,
+         priceSnapshot: { select: { currentPrice: true, price24hAgo: true } },
+      },
+   });
 
    const out = new Map<string, KeyMarketEntry>();
    for (const creator of creators) {
