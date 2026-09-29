@@ -116,11 +116,10 @@ export async function getWatchlist(walletAddress: string) {
       where: { walletAddress },
       include: {
          invoice: {
-            select: {
+select: {
                id: true,
                sellerWallet: true,
                amount: true,
-               currency: true,
                status: true,
                statusUpdatedAt: true,
                maturityDate: true,
@@ -129,16 +128,16 @@ export async function getWatchlist(walletAddress: string) {
                fundingProgress: true,
                createdAt: true,
                updatedAt: true,
-            },
+         },
          },
       },
       orderBy: { createdAt: 'desc' },
    });
 
    const mapped = items.map(item => {
-      const invoiceStatusTime = item.invoice.statusUpdatedAt
-         ? new Date(item.invoice.statusUpdatedAt).getTime()
-         : 0;
+const invoiceStatusTime = item.invoice.statusUpdatedAt
+       ? new Date(item.invoice.statusUpdatedAt).getTime()
+       : 0;
       const lastSeenTime = item.lastSeen
          ? new Date(item.lastSeen).getTime()
          : 0;
@@ -152,22 +151,18 @@ export async function getWatchlist(walletAddress: string) {
          status_changed: hasStatusChanged,
          created_at: toISO(item.createdAt),
          updated_at: toISO(item.updatedAt),
-         invoice: {
-            id: item.invoice.id,
-            seller_wallet: item.invoice.sellerWallet,
-            amount: item.invoice.amount ? item.invoice.amount.toString() : '0',
-            currency: item.invoice.currency,
-            status: item.invoice.status,
-            status_updated_at: toISO(item.invoice.statusUpdatedAt),
-            rate: item.invoice.rate ? item.invoice.rate.toString() : null,
-            maturity_date: toOptionalISO(item.invoice.maturityDate),
-            risk_rating: item.invoice.riskRating ?? null,
-            funding_progress: item.invoice.fundingProgress
-               ? item.invoice.fundingProgress.toString()
-               : '0',
-            created_at: toISO(item.invoice.createdAt),
-            updated_at: toISO(item.invoice.updatedAt),
-         },
+invoice: {
+              id: item.invoice.id,
+              seller_wallet: item.invoice.sellerWallet,
+              amount: item.invoice.amount ? item.invoice.amount.toString() : '0',
+              rate: item.invoice.rate ? item.invoice.rate.toString() : null,
+              risk_rating: item.invoice.riskRating ?? null,
+              funding_progress: item.invoice.fundingProgress
+                 ? item.invoice.fundingProgress.toString()
+                 : '0',
+              created_at: toISO(item.invoice.createdAt),
+              updated_at: toISO(item.invoice.updatedAt),
+          },
       };
    });
 
