@@ -40,6 +40,7 @@ import dividendRouter from '../dividends/dividend.routes';
 import whitelistRouter from '../whitelist/whitelist.routes';
 import {
    requireJwtAuth,
+   requireKeyCreator,
    AuthenticatedRequest,
 } from '../../middlewares/jwt-auth.middleware';
 import {
@@ -61,6 +62,11 @@ import {
 } from '../creator/creator-profile.service';
 
 import { cacheGetJson, cacheSetJson } from '../../utils/redis.utils';
+import {
+   getKeyVestingHistory,
+   getKeyVestingSummary,
+   KeyVestingNotFoundError,
+} from '../vesting/vesting.service';
 import { fetchCreatorProfilesByIds } from '../../utils/creator-batch.utils';
 import {
    castKeyProposalVote,
@@ -724,6 +730,66 @@ router.get('/:keyId/lp-history', async (req, res, next) => {
       next(error);
    }
 });
+
+/**
+ * GET /api/v1/keys/:keyId/vesting
+ * Creator-only: returns the creator key vesting summary for all beneficiaries.
+ */
+router.get(
+   '/:keyId/vesting',
+   requireKeyCreator('keyId'),
+   async (req: AuthenticatedRequest, res, next) => {
+      try {
+         const keyId = String(req.params.keyId);
+         const cacheKey = `key:vesting:${keyId}`;
+         const cached = await cacheGetJson<any>(cacheKey);
+         if (cached !== null) {
+            return sendSuccess(res, cached);
+         }
+
+         const ledger = await prisma.indexedLedger.findFirst({
+            orderBy: { updatedAt: 'desc' },
+            select: { ledger: true },
+         });
+         const currentLedger = ledger?.ledger ?? 0;
+
+         const result = await getKeyVestingSummary(keyId, currentLedger);
+         await cacheSetJson(cacheKey, result, 60);
+         sendSuccess(res, result);
+      } catch (error) {
+         if (error instanceof KeyVestingNotFoundError) {
+            sendNotFound(res, 'Vesting schedule');
+            return;
+         }
+         next(error);
+      }
+   }
+);
+
+router.get(
+   '/:keyId/vesting/history',
+   requireKeyCreator('keyId'),
+   async (req: AuthenticatedRequest, res, next) => {
+      try {
+         const keyId = String(req.params.keyId);
+         const limitParam = req.query.limit;
+         const limit = Array.isArray(limitParam)
+            ? Number(limitParam[0] ?? 20)
+            : Number(limitParam ?? 20);
+         const cacheKey = `key:vesting:${keyId}:history`;
+         const cached = await cacheGetJson<any>(cacheKey);
+         if (cached !== null) {
+            return sendSuccess(res, cached);
+         }
+
+         const history = await getKeyVestingHistory(keyId, Number.isFinite(limit) ? limit : 20);
+         await cacheSetJson(cacheKey, history, 60);
+         sendSuccess(res, history);
+      } catch (error) {
+         next(error);
+      }
+   }
+);
 
 /**
  * GET /api/v1/keys/:keyId/proposals?status=active|closed
