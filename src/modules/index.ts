@@ -21,6 +21,7 @@ import freezeRouter from './freeze/freeze.routes';
 import tradingRouter from './trading/multi-buy.routes';
 import sequencerRouter from './admin/sequencer.routes';
 import keysRouter from './keys/keys.routes';
+import cooldownRouter from './keys/cooldown.routes';
 import notificationsRouter from './notifications/notification.routes';
 import horizonWebhookRouter from './webhooks/horizon-webhook.routes';
 import vestingRouter from './vesting/vesting.routes';
@@ -80,6 +81,7 @@ router.use('/internal', routeBodySizeLimit('default'), sequencerRouter);
 // them. Both share the same body-size group.
 router.use('/keys', routeBodySizeLimit('default'), keysRouter);
 router.use('/keys', routeBodySizeLimit('default'), freezeRouter);
+router.use('/cooldowns', routeBodySizeLimit('default'), cooldownRouter);
 
 router.use(
    '/notifications',

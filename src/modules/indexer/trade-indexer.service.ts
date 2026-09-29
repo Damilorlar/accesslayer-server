@@ -116,5 +116,13 @@ export async function processTradeEvent(
       // Non-critical cache invalidation failure
    }
 
+   try {
+      const { invalidateCooldownCache } =
+         await import('../keys/key-cooldown.service');
+      await invalidateCooldownCache(event.creator_id, event.buyer);
+   } catch {
+      // Non-critical cache invalidation failure
+   }
+
    return true;
 }
