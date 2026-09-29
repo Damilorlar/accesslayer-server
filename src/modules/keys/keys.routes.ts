@@ -33,6 +33,7 @@ import { cacheControl } from '../../middlewares/cache-control.middleware';
 import { envConfig } from '../../config';
 import { getKeyProposals, getProposalForVoting } from './key-proposals.service';
 import { getKeySupply } from './key-supply.service';
+import { httpGetKeyLeaderboard } from './key-leaderboard.controller';
 
 import { KeySearchQueryTooShortError, searchKeys } from './key-search.service';
 import { KEY_SEARCH_MIN_QUERY_LENGTH } from '../../constants/notifications.constants';
@@ -305,6 +306,12 @@ router.post('/batch', async (req, res, next) => {
       next(error);
    }
 });
+
+/**
+ * GET /api/v1/keys/leaderboard
+ * Ranks creator keys by holder count, trading volume, or price performance.
+ */
+router.get('/leaderboard', httpGetKeyLeaderboard);
 
 /**
  * GET /api/v1/keys/search?q=
