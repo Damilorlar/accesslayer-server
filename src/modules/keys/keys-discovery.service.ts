@@ -111,7 +111,7 @@ export async function aggregateVolumeByCreator(
 export async function buildMarketEntries(
    creatorIds: string[]
 ): Promise<Map<string, KeyMarketEntry>> {
-   const [creators, snapshots] = await Promise.all([
+   const [creators] = await Promise.all([
       prisma.creatorProfile.findMany({
          where: { id: { in: creatorIds } },
          select: {

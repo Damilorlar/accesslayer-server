@@ -3,7 +3,6 @@ import {
    sendSuccess,
    sendError,
 } from '../../utils/api-response.utils';
-import { ErrorCode } from '../../constants/error.constants';
 import {
    getDiscovery,
    getLeaderboard,
@@ -29,7 +28,7 @@ function parseLimit(raw: unknown, fallback: number, max: number): number {
  * for 60s and invalidated on new key creation. Both sections always render,
  * even with zero volume.
  */
-export const httpGetKeyDiscovery: AsyncController = async (req, res, next) => {
+export const httpGetKeyDiscovery: AsyncController = async (_req, res, next) => {
    try {
       const body = await getDiscovery();
       sendSuccess(res, body, 200, 'Key discovery retrieved successfully');
