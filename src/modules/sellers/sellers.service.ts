@@ -22,11 +22,11 @@ export async function getSellerOnboardingStatus(
          where: { walletAddress },
          select: { status: true, approvedAt: true, createdAt: true },
       }),
-prisma.invoice.findFirst({
-     where: { actor: walletAddress },
-     orderBy: { createdAt: 'asc' },
-     select: { createdAt: true },
-}),
+      prisma.invoice.findFirst({
+         where: { sellerWallet: walletAddress },
+         orderBy: { createdAt: 'asc' },
+         select: { createdAt: true },
+      }),
    ]);
 
    // Step 1: wallet_connected

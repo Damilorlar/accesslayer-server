@@ -34,29 +34,7 @@ model KeyOwnership {
   @@index([ownerAddress])
   @@index([creatorId])
 }
-model Invoice {
-  id              String   @id @default(cuid())
-  invoiceId       String   @unique // External invoice identifier (e.g., tx hash or custom ID)
-  creatorId       String
-  amount          Decimal  // Number of keys purchased
-  rate            Decimal  // Price per key at time of purchase
-  maturity        DateTime // When the invoice/matured
-  riskRating      String   // Risk rating (e.g., "low", "medium", "high")
-  sellerStats     Json     // Additional seller statistics
-  sellerWallet    String   // Seller wallet address
-  status          String
-  statusUpdatedAt DateTime // When the status was last updated
-  fundingProgress Decimal // Funding progress percentage or amount
-  tradeType       String   // "buy" or "sell"
-  actor           String   // Wallet address of the buyer/seller
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
 
-  watchlists      InvestorWatchlist[]
-
-  @@index([creatorId])
-  @@index([invoiceId])
-}
 /// Payment record for a holder buyback on a deprecated key (#882).
 /// Written in the same transaction that zeroes the holder balance so the
 /// balance reduction and the payment are atomic.

@@ -19,6 +19,7 @@ import alertsRouter from './alerts/alert.router';
 import invoiceRouter from './invoice/invoice.routes';
 import freezeRouter from './freeze/freeze.routes';
 import platformRouter from './platform/platform.routes';
+
 import tradingRouter from './trading/multi-buy.routes';
 import sequencerRouter from './admin/sequencer.routes';
 import keysRouter from './keys/keys.routes';
@@ -46,21 +47,6 @@ import { BASE as CREATORS_BASE } from '../constants/creator.constants';
 
 const router = Router();
 
-router.use('/health', healthRouter);
-router.use('/auth', authRouter);
-router.use('/config', configRouter);
-router.use(CREATORS_BASE, creatorsRouter);
-router.use(CREATORS_BASE, creatorRouter);
-router.use('/metrics', metricsRouter);
-router.use('/ledger', ledgerRouter);
-router.use('/admin', adminRouter);
-router.use('/activity', activityRouter);
-router.use('/ownership', ownershipRouter);
-router.use('/invoices', invoiceRouter);
-router.use(CREATORS_BASE, webhookRouter);
-router.use('/wallets', walletsRouter);
-router.use('/alerts', alertsRouter);
-
 // Adaptive per-wallet/per-IP database query cost governor (#755). Mounted
 // ahead of route resolution (so it matches on req.path, not req.route — see
 // query-cost.utils.ts) and ahead of every group below, so it covers the
@@ -85,6 +71,7 @@ router.use('/ledger', routeBodySizeLimit('default'), ledgerRouter);
 router.use('/admin', routeBodySizeLimit('admin'), adminRouter);
 router.use('/activity', routeBodySizeLimit('default'), activityRouter);
 router.use('/ownership', routeBodySizeLimit('default'), ownershipRouter);
+router.use('/invoices', routeBodySizeLimit('default'), invoiceRouter);
 router.use('/subscriptions', routeBodySizeLimit('default'), subscriptionRouter);
 router.use(CREATORS_BASE, routeBodySizeLimit('creators'), webhookRouter);
 router.use('/wallets', routeBodySizeLimit('default'), walletsRouter);
@@ -126,4 +113,3 @@ router.use('/auctions', routeBodySizeLimit('default'), auctionRouter);
 router.use('/holders', routeBodySizeLimit('default'), holdersRouter);
 
 export default router;
-

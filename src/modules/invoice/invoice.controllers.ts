@@ -1,48 +1,67 @@
+// src/modules/invoice/invoice.controllers.ts
 import { AsyncController } from '../../types/auth.types';
-import { InvoiceComparisonQuerySchema } from './invoice.schemas';
-import { fetchInvoiceComparison } from './invoice.service';
-import { sendSuccess, sendValidationError } from '../../utils/api-response.utils';
+import {
+   sendNotFound,
+   sendSuccess,
+   sendValidationError,
+   zodIssuesToDetails,
+} from '../../utils/api-response.utils';
+import {
+   InvoiceComparisonQuerySchema,
+   MAX_COMPARABLE_INVOICES,
+   parseInvoiceIds,
+} from './invoice.schemas';
+import { getInvoiceComparison, InvoiceNotFoundError } from './invoice.service';
 
-const CACHE_TTL_SECONDS = 30;
+/**
+ * GET /invoices/compare?ids=<idA>,<idB>
+ *
+ * Returns comparison metrics for up to {@link MAX_COMPARABLE_INVOICES}
+ * invoices, grouped by invoice ID. Responses are served from the 30s
+ * comparison cache keyed by the requested ID combination.
+ */
+export const httpGetInvoiceComparison: AsyncController = async (
+   req,
+   res,
+   next
+) => {
+   const parsed = InvoiceComparisonQuerySchema.safeParse(req.query);
+   if (!parsed.success) {
+      return sendValidationError(
+         res,
+         'Invalid query parameters',
+         zodIssuesToDetails(parsed.error.issues)
+      );
+   }
 
-export const httpGetInvoiceComparison: AsyncController = async (req, res, next) => {
+   const ids = parseInvoiceIds(parsed.data.ids);
+
+   if (ids.length === 0) {
+      return sendValidationError(res, 'Invalid query parameters', [
+         { field: 'ids', message: 'At least one invoice ID is required' },
+      ]);
+   }
+
+   if (ids.length > MAX_COMPARABLE_INVOICES) {
+      return sendValidationError(
+         res,
+         `Maximum ${MAX_COMPARABLE_INVOICES} invoice IDs allowed`,
+         [
+            {
+               field: 'ids',
+               message: `Maximum ${MAX_COMPARABLE_INVOICES} invoice IDs allowed, received ${ids.length}`,
+            },
+         ]
+      );
+   }
+
    try {
-      const parsed = InvoiceComparisonQuerySchema.safeParse(req.query);
-      if (!parsed.success) {
-         return sendValidationError(
-            res,
-            'Invalid query parameters',
-            parsed.error.issues.map(issue => ({
-               field: issue.path.join('.'),
-               message: issue.message,
-            }))
-         );
-      }
-
-      const { ids } = parsed.data;
-      const idArray = ids.split(',').map(id => id.trim()).filter(id => id.length > 0);
-
-      if (idArray.length > 2) {
-         return sendValidationError(
-            res,
-            'Maximum 2 invoice IDs allowed',
-            [{ field: 'ids', message: 'Maximum 2 invoice IDs allowed' }]
-         );
-      }
-
-      if (idArray.length < 2) {
-         return sendValidationError(
-            res,
-            'At least 2 invoice IDs required',
-            [{ field: 'ids', message: 'At least 2 invoice IDs required' }]
-         );
-      }
-
-      const comparison = await fetchInvoiceComparison(idArray);
-
-      res.setHeader('Cache-Control', `public, max-age=${CACHE_TTL_SECONDS}`);
-      sendSuccess(res, comparison);
+      const comparison = await getInvoiceComparison(ids);
+      return sendSuccess(res, comparison);
    } catch (error) {
-      next(error);
+      if (error instanceof InvoiceNotFoundError) {
+         return sendNotFound(res, 'Invoice');
+      }
+      return next(error);
    }
 };
