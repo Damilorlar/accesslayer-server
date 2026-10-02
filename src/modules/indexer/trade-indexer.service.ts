@@ -104,6 +104,8 @@ export async function processTradeEvent(
       const { invalidateCreatorDashboardCache } =
          await import('../creator/creator-dashboard.service');
       await invalidateCreatorDashboardCache(event.creator_id);
+      const { invalidateKeyTwapCache } = await import('../keys/key-twap-window.service');
+      await invalidateKeyTwapCache(event.creator_id);
    } catch {
       // Non-critical cache invalidation failure
    }
@@ -112,6 +114,14 @@ export async function processTradeEvent(
       const { invalidateKeyAnalyticsCache } =
          await import('../keys/key-analytics.service');
       await invalidateKeyAnalyticsCache(event.creator_id);
+   } catch {
+      // Non-critical cache invalidation failure
+   }
+
+   try {
+      const { invalidateCooldownCache } =
+         await import('../keys/key-cooldown.service');
+      await invalidateCooldownCache(event.creator_id, event.buyer);
    } catch {
       // Non-critical cache invalidation failure
    }

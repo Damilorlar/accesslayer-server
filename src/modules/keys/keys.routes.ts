@@ -28,11 +28,16 @@ import {
    getTwapPrice,
    KeyNotFoundError as TwapKeyNotFoundError,
 } from './key-twap.service';
+import {
+   getKeyMetadata,
+   KeyMetadataNotFoundError,
+} from './key-metadata-sync.service';
 import { TWAP_WINDOWS } from '../../constants/redis.constants';
 import { cacheControl } from '../../middlewares/cache-control.middleware';
 import { envConfig } from '../../config';
 import { getKeyProposals, getProposalForVoting } from './key-proposals.service';
 import { getKeySupply } from './key-supply.service';
+import { httpGetKeyLeaderboard } from './key-leaderboard.controller';
 
 import { KeySearchQueryTooShortError, searchKeys } from './key-search.service';
 import { KEY_SEARCH_MIN_QUERY_LENGTH } from '../../constants/notifications.constants';
@@ -40,6 +45,7 @@ import dividendRouter from '../dividends/dividend.routes';
 import whitelistRouter from '../whitelist/whitelist.routes';
 import {
    requireJwtAuth,
+   requireKeyCreator,
    AuthenticatedRequest,
 } from '../../middlewares/jwt-auth.middleware';
 import {
@@ -61,6 +67,11 @@ import {
 } from '../creator/creator-profile.service';
 
 import { cacheGetJson, cacheSetJson } from '../../utils/redis.utils';
+import {
+   getKeyVestingHistory,
+   getKeyVestingSummary,
+   KeyVestingNotFoundError,
+} from '../vesting/vesting.service';
 import { fetchCreatorProfilesByIds } from '../../utils/creator-batch.utils';
 import {
    castKeyProposalVote,
@@ -116,6 +127,14 @@ import {
    KeyNotFoundError as CircuitBreakerKeyNotFoundError,
 } from './circuit-breaker.service';
 import { circuitBreakerQuerySchema } from './circuit-breaker.schemas';
+import {
+   simulateKeyTrade,
+   type SimulateSide,
+   InsufficientCirculatingSupplyError,
+   QuantityExceedsLimitError,
+   BatchSizeExceedsLimitError,
+} from './key-simulate.service';
+import { getKeyTwap } from './key-twap-window.service';
 
 const priceHistoryQuerySchema = z.object({
    from: z.string().datetime(),
@@ -299,6 +318,12 @@ router.post('/batch', async (req, res, next) => {
       next(error);
    }
 });
+
+/**
+ * GET /api/v1/keys/leaderboard
+ * Ranks creator keys by holder count, trading volume, or price performance.
+ */
+router.get('/leaderboard', httpGetKeyLeaderboard);
 
 /**
  * GET /api/v1/keys/search?q=
@@ -564,6 +589,28 @@ router.get(
 );
 
 /**
+ * GET /api/v1/keys/:keyId/metadata
+ *
+ * Returns synced on-chain creator key metadata (name, symbol, description,
+ * imageCid, imageUrl) along with a `stale` flag when synchronization is
+ * delayed by more than 10 minutes (#986).
+ */
+router.get('/:keyId/metadata', async (req, res, next) => {
+   const keyId = String(req.params.keyId);
+   try {
+      const metadata = await getKeyMetadata(keyId);
+      sendSuccess(res, metadata);
+   } catch (error) {
+      if (error instanceof KeyMetadataNotFoundError) {
+         sendNotFound(res, 'Key metadata');
+         return;
+      }
+      next(error);
+   }
+});
+
+
+/**
  * GET /api/v1/keys/:keyId/price/twap?window=1h|4h|24h
  *
  * Returns the cached TWAP for the requested window, the bonding-curve
@@ -607,6 +654,72 @@ router.get('/:keyId', async (req, res, next) => {
       }
       const profile = await getCreatorProfile(keyId);
       sendSuccess(res, profile, 200, 'Key retrieved successfully');
+   } catch (error) {
+      next(error);
+   }
+});
+
+// ── GET /:keyId/curve-config ──────────────────────────────────
+
+router.get('/:keyId/curve-config', async (req, res, next) => {
+   const keyId = String(req.params.keyId);
+   try {
+      const creator = await prisma.creatorProfile.findFirst({
+         where: { OR: [{ id: keyId }, { handle: keyId }] },
+         select: { id: true, curveMilestones: true, baseExponent: true },
+      });
+      if (!creator) {
+         sendNotFound(res, 'Key');
+         return;
+      }
+
+      sendSuccess(res, {
+         keyId: creator.id,
+         milestones: (creator.curveMilestones as any) ?? [],
+         baseExponent: creator.baseExponent ?? 1,
+      });
+   } catch (error) {
+      next(error);
+   }
+});
+
+// ── GET /:keyId/twap (#866) ───────────────────────────────────
+// Distinct from GET /:keyId/price/twap (#963): this endpoint serves the
+// 1h/24h/7d window set and returns twapPrice/windowLedgers/snapshotCount,
+// with twapPrice null when fewer than two snapshots fall in the window.
+
+const twapWindowQuerySchema = z.object({
+   window: z.enum(['1h', '24h', '7d'], {
+      errorMap: () => ({ message: 'Invalid window param. Must be 1h, 24h, or 7d' }),
+   }),
+});
+
+router.get('/:keyId/twap', async (req, res, next) => {
+   const keyId = String(req.params.keyId);
+   const parsed = twapWindowQuerySchema.safeParse(req.query);
+   if (!parsed.success) {
+      sendError(
+         res,
+         422,
+         ErrorCode.UNPROCESSABLE_ENTITY,
+         'Invalid window param. Must be 1h, 24h, or 7d',
+         zodIssuesToDetails(parsed.error.issues)
+      );
+      return;
+   }
+
+   try {
+      const creator = await prisma.creatorProfile.findFirst({
+         where: { OR: [{ id: keyId }, { handle: keyId }] },
+         select: { id: true },
+      });
+      if (!creator) {
+         sendNotFound(res, 'Key');
+         return;
+      }
+
+      const result = await getKeyTwap(creator.id, parsed.data.window);
+      sendSuccess(res, result);
    } catch (error) {
       next(error);
    }
@@ -724,6 +837,66 @@ router.get('/:keyId/lp-history', async (req, res, next) => {
       next(error);
    }
 });
+
+/**
+ * GET /api/v1/keys/:keyId/vesting
+ * Creator-only: returns the creator key vesting summary for all beneficiaries.
+ */
+router.get(
+   '/:keyId/vesting',
+   requireKeyCreator('keyId'),
+   async (req: AuthenticatedRequest, res, next) => {
+      try {
+         const keyId = String(req.params.keyId);
+         const cacheKey = `key:vesting:${keyId}`;
+         const cached = await cacheGetJson<any>(cacheKey);
+         if (cached !== null) {
+            return sendSuccess(res, cached);
+         }
+
+         const ledger = await prisma.indexedLedger.findFirst({
+            orderBy: { updatedAt: 'desc' },
+            select: { ledger: true },
+         });
+         const currentLedger = ledger?.ledger ?? 0;
+
+         const result = await getKeyVestingSummary(keyId, currentLedger);
+         await cacheSetJson(cacheKey, result, 60);
+         sendSuccess(res, result);
+      } catch (error) {
+         if (error instanceof KeyVestingNotFoundError) {
+            sendNotFound(res, 'Vesting schedule');
+            return;
+         }
+         next(error);
+      }
+   }
+);
+
+router.get(
+   '/:keyId/vesting/history',
+   requireKeyCreator('keyId'),
+   async (req: AuthenticatedRequest, res, next) => {
+      try {
+         const keyId = String(req.params.keyId);
+         const limitParam = req.query.limit;
+         const limit = Array.isArray(limitParam)
+            ? Number(limitParam[0] ?? 20)
+            : Number(limitParam ?? 20);
+         const cacheKey = `key:vesting:${keyId}:history`;
+         const cached = await cacheGetJson<any>(cacheKey);
+         if (cached !== null) {
+            return sendSuccess(res, cached);
+         }
+
+         const history = await getKeyVestingHistory(keyId, Number.isFinite(limit) ? limit : 20);
+         await cacheSetJson(cacheKey, history, 60);
+         sendSuccess(res, history);
+      } catch (error) {
+         next(error);
+      }
+   }
+);
 
 /**
  * GET /api/v1/keys/:keyId/proposals?status=active|closed
@@ -1211,6 +1384,81 @@ router.get('/:keyId/price-history', async (req, res, next) => {
          }))
       );
    } catch (error) {
+      next(error);
+   }
+ });
+
+// ── GET /:keyId/simulate ──────────────────────────────────────
+
+router.get('/:keyId/simulate', async (req, res, next) => {
+   const keyId = String(req.params.keyId);
+   const rawSide = req.query.side;
+   const rawQty = req.query.quantity ?? req.query.quantities;
+
+   if (rawSide !== 'buy' && rawSide !== 'sell') {
+      sendError(
+         res,
+         422,
+         ErrorCode.UNPROCESSABLE_ENTITY,
+         "side must be 'buy' or 'sell'"
+      );
+      return;
+   }
+
+   if (!rawQty || typeof rawQty !== 'string') {
+      sendError(
+         res,
+         422,
+         ErrorCode.UNPROCESSABLE_ENTITY,
+         'quantity is required'
+      );
+      return;
+   }
+
+   const quantities = rawQty
+      .split(',')
+      .map((s: string) => s.trim())
+      .filter(Boolean)
+      .map((s: string) => Number(s));
+
+   if (
+      quantities.length === 0 ||
+      quantities.some((q: number) => isNaN(q) || !Number.isInteger(q) || q <= 0)
+   ) {
+      sendError(
+         res,
+         422,
+         ErrorCode.UNPROCESSABLE_ENTITY,
+         'quantities must be positive integers'
+      );
+      return;
+   }
+
+   try {
+      const result = await simulateKeyTrade(
+         keyId,
+         quantities,
+         rawSide as SimulateSide
+      );
+      sendSuccess(res, result);
+   } catch (error) {
+      if (error instanceof KeyNotFoundError) {
+         sendNotFound(res, 'Key');
+         return;
+      }
+      if (
+         error instanceof InsufficientCirculatingSupplyError ||
+         error instanceof QuantityExceedsLimitError ||
+         error instanceof BatchSizeExceedsLimitError
+      ) {
+         sendError(
+            res,
+            422,
+            ErrorCode.UNPROCESSABLE_ENTITY,
+            error.message
+         );
+         return;
+      }
       next(error);
    }
 });

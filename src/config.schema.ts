@@ -421,6 +421,13 @@ export const envSchema = z
          .positive()
          .default(60),
 
+      // Creator key on-chain metadata sync (#986)
+      PINATA_GATEWAY_URL: z.string().default('https://gateway.pinata.cloud/ipfs'),
+      METADATA_STALENESS_THRESHOLD_MS: z.coerce
+         .number()
+         .int()
+         .positive()
+         .default(10 * 60 * 1000), // 10 minutes
    })
    .superRefine((data, ctx) => {
       if (data.MODE === 'production' && data.STELLAR_NETWORK === 'testnet') {
